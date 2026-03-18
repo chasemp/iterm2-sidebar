@@ -110,7 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func handleRedockCheck(workspaceId: String, panelFrame: NSRect) {
         guard let sidebarFrame = sidebarController.panelFrame else { return }
-        var dockZone = DockZone(sidebarFrame: sidebarFrame)
+        let dockZone = DockZone(sidebarFrame: sidebarFrame)
         let center = CGPoint(x: panelFrame.midX, y: panelFrame.midY)
         if dockZone.contains(center) {
             let sortOrder = dockZone.insertionIndex(
@@ -136,7 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let draggedId = self.dragStateMachine.dragEnded() else { return }
             let screenPoint = NSEvent.mouseLocation
             if let sidebarFrame = self.sidebarController.panelFrame {
-                var dockZone = DockZone(sidebarFrame: sidebarFrame)
+                let dockZone = DockZone(sidebarFrame: sidebarFrame)
                 if !dockZone.contains(screenPoint) {
                     self.handleDragUndock(workspaceId: draggedId, screenPoint: screenPoint)
                 }
