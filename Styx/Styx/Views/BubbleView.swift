@@ -5,14 +5,18 @@ struct BubbleView: View {
     let state: BubbleState
     let size: CGFloat
     let onTap: () -> Void
+    var onDoubleTap: (() -> Void)?
     var onDragChanged: ((CGSize) -> Void)?
     var onDragEnded: (() -> Void)?
+
+    @State private var lastClickTime: Date = .distantPast
 
     init(
         workspace: Workspace,
         state: BubbleState,
         size: CGFloat = 48,
         onTap: @escaping () -> Void,
+        onDoubleTap: (() -> Void)? = nil,
         onDragChanged: ((CGSize) -> Void)? = nil,
         onDragEnded: (() -> Void)? = nil
     ) {
@@ -20,6 +24,7 @@ struct BubbleView: View {
         self.state = state
         self.size = size
         self.onTap = onTap
+        self.onDoubleTap = onDoubleTap
         self.onDragChanged = onDragChanged
         self.onDragEnded = onDragEnded
     }
@@ -46,12 +51,32 @@ struct BubbleView: View {
         }
         .frame(width: size + 16)
         .contentShape(Rectangle())
-        .gesture(
+        .simultaneousGesture(
             DragGesture(minimumDistance: 8)
                 .onChanged { value in onDragChanged?(value.translation) }
                 .onEnded { _ in onDragEnded?() }
         )
-        .onTapGesture(perform: onTap)
+        .onTapGesture {
+            let now = Date()
+            let interval = now.timeIntervalSince(lastClickTime)
+            StateLedger.shared.record(
+                component: "BubbleView", operation: "tapGesture",
+                before: ["workspaceId": AnyCodable(workspace.id), "lastClickInterval": AnyCodable(interval)],
+                after: ["isDoubleTap": AnyCodable(interval < 0.35)]
+            )
+            if interval < 0.35 {
+                onDoubleTap?()
+                lastClickTime = .distantPast
+            } else {
+                lastClickTime = now
+                let captured = now
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    if self.lastClickTime == captured {
+                        self.onTap()
+                    }
+                }
+            }
+        }
         .animation(.easeInOut(duration: 0.2), value: state)
     }
 }

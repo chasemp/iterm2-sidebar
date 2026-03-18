@@ -7,6 +7,7 @@ actor ITerm2Bridge: BridgeService {
     private var process: Process?
     private var stdinPipe: Pipe?
     private var stdoutPipe: Pipe?
+    private var stderrPipe: Pipe?
     private var pendingRequests: [String: CheckedContinuation<BridgeResponse, Error>] = [:]
     private var focusContinuation: AsyncStream<FocusEvent>.Continuation?
     private var readTask: Task<Void, Never>?
@@ -15,8 +16,8 @@ actor ITerm2Bridge: BridgeService {
 
     nonisolated let focusEvents: AsyncStream<FocusEvent>
 
-    init(pythonPath: String = "/usr/bin/env") {
-        self.pythonPath = pythonPath
+    init(pythonPath: String? = nil) {
+        self.pythonPath = pythonPath ?? Self.bundledPythonPath()
         var continuation: AsyncStream<FocusEvent>.Continuation!
         self.focusEvents = AsyncStream { continuation = $0 }
         self.focusContinuation = continuation
@@ -28,12 +29,19 @@ actor ITerm2Bridge: BridgeService {
         let process = Process()
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
 
         process.executableURL = URL(fileURLWithPath: pythonPath)
-        process.arguments = ["python3", bridgeScriptPath()]
+        // If using the bundled venv python, call the script directly.
+        // If falling back to /usr/bin/env, we need "python3" as the first arg.
+        if pythonPath.hasSuffix("python3") {
+            process.arguments = [bridgeScriptPath()]
+        } else {
+            process.arguments = ["python3", bridgeScriptPath()]
+        }
         process.standardInput = stdinPipe
         process.standardOutput = stdoutPipe
-        process.standardError = Pipe()
+        process.standardError = stderrPipe
         process.environment = ProcessInfo.processInfo.environment
 
         process.terminationHandler = { [weak self] proc in
@@ -47,6 +55,7 @@ actor ITerm2Bridge: BridgeService {
         self.process = process
         self.stdinPipe = stdinPipe
         self.stdoutPipe = stdoutPipe
+        self.stderrPipe = stderrPipe
         self.isRunning = true
         startReadingStdout()
     }
@@ -59,6 +68,7 @@ actor ITerm2Bridge: BridgeService {
         process = nil
         stdinPipe = nil
         stdoutPipe = nil
+        stderrPipe = nil
 
         for (_, continuation) in pendingRequests {
             continuation.resume(throwing: BridgeError.disconnected)
@@ -120,6 +130,15 @@ actor ITerm2Bridge: BridgeService {
 
     private func handleTermination(exitCode: Int32) {
         isRunning = false
+
+        // Read any stderr output from the bridge for diagnostics
+        if let stderrData = stderrPipe?.fileHandleForReading.readDataToEndOfFile(),
+           let stderrText = String(data: stderrData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !stderrText.isEmpty {
+            logger.error("Bridge stderr: \(stderrText)")
+        }
+        stderrPipe = nil
+
         for (_, continuation) in pendingRequests {
             continuation.resume(throwing: BridgeError.processExited(exitCode))
         }
@@ -140,5 +159,14 @@ actor ITerm2Bridge: BridgeService {
         return Bundle.main.bundlePath
             .components(separatedBy: "/").dropLast(1).joined(separator: "/")
             + "/StyxBridge/bridge_daemon.py"
+    }
+
+    private static func bundledPythonPath() -> String {
+        let resourcePath = Bundle.main.resourcePath ?? Bundle.main.bundlePath
+        let venvPython = resourcePath + "/StyxBridge/venv/bin/python3"
+        if FileManager.default.isExecutableFile(atPath: venvPython) {
+            return venvPython
+        }
+        return "/usr/bin/env"
     }
 }
