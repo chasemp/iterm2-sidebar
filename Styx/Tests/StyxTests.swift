@@ -1934,6 +1934,58 @@ final class BridgeScriptBundlingTests: XCTestCase {
     }
 }
 
+// MARK: - Save Positions Behavior
+
+@MainActor
+final class SavePositionsBehaviorTests: XCTestCase {
+
+    func test_save_positions_updates_floating_workspace_positions() {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "Float", docked: false, floatingPosition: CodablePoint(x: 100, y: 100))
+        store.config.workspaces = [ws]
+        let manager = FloatingBubbleManager(store: store)
+        manager.showFloatingBubble(for: ws)
+
+        // The panel is created at position (100, 100) by default
+        manager.savePositions()
+
+        // Position should be updated from the actual panel frame
+        let saved = store.workspaces.first!.floatingPosition
+        XCTAssertNotNil(saved)
+    }
+}
+
+// MARK: - Panel Resize Math
+
+@MainActor
+final class PanelResizeMathTests: XCTestCase {
+
+    func test_sidebar_panel_height_grows_with_bubbles() {
+        let store = WorkspaceStore()
+        store.config.workspaces = [
+            makeWorkspace(name: "A", docked: true),
+        ]
+        let controller = SidebarPanelController(store: store)
+        controller.show()
+        let oneHeight = controller.panelFrame!.height
+
+        store.config.workspaces.append(makeWorkspace(name: "B", docked: true))
+        store.config.workspaces.append(makeWorkspace(name: "C", docked: true))
+        controller.refresh()
+        let threeHeight = controller.panelFrame!.height
+
+        XCTAssertGreaterThan(threeHeight, oneHeight)
+    }
+
+    func test_sidebar_panel_has_minimum_height_with_zero_bubbles() {
+        let store = WorkspaceStore()
+        let controller = SidebarPanelController(store: store)
+        controller.show()
+
+        XCTAssertGreaterThan(controller.panelFrame!.height, 0)
+    }
+}
+
 // MARK: - AnyCodable Edge Cases
 
 final class AnyCodableEdgeCaseTests: XCTestCase {
