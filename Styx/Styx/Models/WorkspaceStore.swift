@@ -21,6 +21,7 @@ final class WorkspaceStore {
 
     var focusedWorkspaceId: String?
     var bridgeConnected = false
+    var iTerm2Reachable = false
 
     // MARK: - Bubble State
 
@@ -64,7 +65,9 @@ final class WorkspaceStore {
             guard let windows = result as? [[String: Any]] else { return }
             let activeIds = Set(windows.compactMap { $0["window_id"] as? String })
             refreshWindowLiveness(activeWindowIds: activeIds)
+            iTerm2Reachable = true
         } catch {
+            iTerm2Reachable = false
             logger.warning("Window poll failed: \(error)")
         }
     }
@@ -184,6 +187,33 @@ final class WorkspaceStore {
         }
         workspaces.removeAll { $0.id == workspace.id }
         saveConfig()
+    }
+
+    // MARK: - Capture Current Window
+
+    func captureCurrentWindow(name: String, color: String, icon: String) async {
+        do {
+            let result = try await bridge?.call("get_active_window", args: [:])
+            guard let data = result as? [String: Any],
+                  let windowId = data["window_id"] as? String else { return }
+
+            let tabsData = data["tabs"] as? [[String: Any]] ?? []
+            let tabs = tabsData.compactMap { tabDict -> WorkspaceTab? in
+                let sessions = tabDict["sessions"] as? [[String: Any]] ?? []
+                let sessionName = sessions.first?["name"] as? String ?? "shell"
+                return WorkspaceTab(name: sessionName, dir: nil, cmd: nil)
+            }
+
+            let workspace = Workspace(
+                name: name, color: color, icon: icon,
+                sortOrder: workspaces.count,
+                itermWindowId: windowId, tabs: tabs
+            )
+            workspaces.append(workspace)
+            saveConfig()
+        } catch {
+            logger.error("Failed to capture current window: \(error)")
+        }
     }
 
     // MARK: - Persistence

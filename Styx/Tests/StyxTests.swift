@@ -1853,6 +1853,107 @@ final class PanelResizeMathTests: XCTestCase {
     }
 }
 
+// MARK: - Hotkey Re-registration
+
+@MainActor
+final class HotkeyReregistrationTests: XCTestCase {
+
+    func test_reregister_hotkeys_clears_old_and_registers_new() {
+        let delegate = AppDelegate(); do { delegate.headless = true }
+        delegate.store.config.hotkeys.toggleSidebar = "Cmd+Shift+S"
+
+        delegate.registerHotkeys()
+        let countBefore = delegate.hotkeyRegistrar.registeredCount
+        XCTAssertGreaterThan(countBefore, 0)
+
+        // Change hotkey config and re-register
+        delegate.store.config.hotkeys.toggleSidebar = "Cmd+Shift+X"
+        delegate.reregisterHotkeys()
+        let countAfter = delegate.hotkeyRegistrar.registeredCount
+
+        // Count should be same (old cleared, new registered)
+        XCTAssertEqual(countAfter, countBefore)
+    }
+}
+
+// MARK: - Capture Current Window
+
+@MainActor
+final class CaptureCurrentWindowTests: XCTestCase {
+
+    func test_capture_creates_workspace_from_window_info() async {
+        let store = WorkspaceStore()
+        let fake = FakeBridge()
+        // Simulate bridge returning active window info
+        await fake.setCallResult("get_active_window", value: [
+            "window_id": "pty-capture",
+            "tabs": [
+                ["tab_id": "tab-1", "sessions": [["session_id": "sess-1", "name": "~/projects"]]] as [String: Any],
+                ["tab_id": "tab-2", "sessions": [["session_id": "sess-2", "name": "~/logs"]]] as [String: Any],
+            ] as [[String: Any]],
+        ] as [String: Any])
+        await store.connectBridge(fake)
+
+        await store.captureCurrentWindow(name: "Captured", color: "#FF6B6B", icon: "star")
+
+        XCTAssertEqual(store.workspaces.count, 1)
+        let ws = store.workspaces.first!
+        XCTAssertEqual(ws.name, "Captured")
+        XCTAssertEqual(ws.itermWindowId, "pty-capture")
+        XCTAssertEqual(ws.tabs.count, 2)
+    }
+
+    func test_capture_with_no_active_window_does_nothing() async {
+        let store = WorkspaceStore()
+        let fake = FakeBridge()
+        await fake.setShouldThrow(true)
+        await store.connectBridge(fake)
+        await fake.setShouldThrow(false)
+        await fake.setShouldThrow(true) // throw on get_active_window
+
+        await store.captureCurrentWindow(name: "Fail", color: "#000", icon: "star")
+
+        XCTAssertTrue(store.workspaces.isEmpty)
+    }
+}
+
+// MARK: - Bridge Error State
+
+@MainActor
+final class BridgeErrorStateTests: XCTestCase {
+
+    func test_store_tracks_iterm2_running_state() async {
+        let store = WorkspaceStore()
+        let fake = FakeBridge()
+        await fake.setCallResult("list_windows", value: [
+            ["window_id": "pty-1", "tabs": []] as [String: Any]
+        ])
+        await store.connectBridge(fake)
+
+        await store.pollWindowLiveness()
+
+        XCTAssertTrue(store.iTerm2Reachable)
+    }
+
+    func test_store_detects_iterm2_unreachable() async {
+        let store = WorkspaceStore()
+        let fake = FakeBridge()
+        await store.connectBridge(fake)
+        await fake.setShouldThrow(true)
+
+        await store.pollWindowLiveness()
+
+        XCTAssertFalse(store.iTerm2Reachable)
+    }
+
+    func test_bridge_not_connected_shows_in_store() {
+        let store = WorkspaceStore()
+        XCTAssertFalse(store.bridgeConnected)
+    }
+}
+
+// MARK: - AnyCodable Edge Cases
+
 final class AnyCodableEdgeCaseTests: XCTestCase {
 
     func test_nested_dict_roundtrip() throws {

@@ -192,7 +192,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Hotkey Registration
 
-    private func registerHotkeys() {
+    func reregisterHotkeys() {
+        hotkeyRegistrar.unregisterAll()
+        registerHotkeys()
+    }
+
+    func registerHotkeys() {
         if let combo = HotkeyParser.parse(store.config.hotkeys.toggleSidebar) {
             hotkeyRegistrar.register(combo) { [weak self] in self?.toggleSidebar() }
         }

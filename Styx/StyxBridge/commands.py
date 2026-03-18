@@ -184,6 +184,33 @@ async def cmd_list_tabs(connection: iterm2.Connection, args: dict) -> list:
     return tabs
 
 
+@command("get_active_window")
+async def cmd_get_active_window(connection: iterm2.Connection, args: dict) -> dict:
+    """Return the currently focused iTerm2 window with its tabs."""
+    app = await iterm2.async_get_app(connection)
+    window = app.current_terminal_window
+    if window is None:
+        raise ValueError("No active iTerm2 window")
+
+    tabs = []
+    for tab in window.tabs:
+        sessions = []
+        for session in tab.sessions:
+            sessions.append({
+                "session_id": session.session_id,
+                "name": session.name,
+            })
+        tabs.append({
+            "tab_id": tab.tab_id,
+            "sessions": sessions,
+        })
+
+    return {
+        "window_id": window.window_id,
+        "tabs": tabs,
+    }
+
+
 # --- Helpers ---
 
 def _find_window(app, window_id: str):
