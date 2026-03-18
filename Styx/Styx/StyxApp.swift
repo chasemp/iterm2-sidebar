@@ -220,7 +220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     "iTerm2Reachable": AnyCodable(self.store.iTerm2Reachable),
                     "focusedWorkspaceId": AnyCodable(self.store.focusedWorkspaceId ?? "none"),
                     "dockedCount": AnyCodable(self.store.workspaces.filter(\.docked).count),
-                    "minimizedCount": AnyCodable(self.store.workspaces.filter(\.collapsed).count),
+                    "minCount": AnyCodable(self.store.workspaces.filter(\.collapsed).count),
                     "sidebarFrame": AnyCodable(self.sidebarController.panelFrame.map {
                         ["x": $0.origin.x, "y": $0.origin.y,
                          "width": $0.size.width, "height": $0.size.height]
