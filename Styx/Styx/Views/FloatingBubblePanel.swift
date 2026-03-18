@@ -3,8 +3,9 @@ import SwiftUI
 
 final class FloatingBubblePanel: NSPanel {
     let workspaceId: String
+    var onMouseUp: ((String, NSRect) -> Void)?
 
-    init(workspaceId: String, position: CGPoint) {
+    init(workspaceId: String, position: CGPoint, contentView: NSView? = nil) {
         self.workspaceId = workspaceId
         super.init(
             contentRect: NSRect(x: position.x, y: position.y, width: 72, height: 80),
@@ -20,10 +21,19 @@ final class FloatingBubblePanel: NSPanel {
         self.isMovableByWindowBackground = true
         self.hidesOnDeactivate = false
         self.becomesKeyOnlyIfNeeded = true
+
+        if let contentView {
+            self.contentView = contentView
+        }
     }
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+
+    override func mouseUp(with event: NSEvent) {
+        super.mouseUp(with: event)
+        onMouseUp?(workspaceId, frame)
+    }
 
     func clampToScreen() {
         guard let screen = NSScreen.main else { return }
@@ -50,7 +60,25 @@ final class FloatingBubbleManager {
     func showFloatingBubble(for workspace: Workspace) {
         guard panels[workspace.id] == nil else { return }
         let position = workspace.floatingPosition?.cgPoint ?? CGPoint(x: 100, y: 100)
-        let panel = FloatingBubblePanel(workspaceId: workspace.id, position: position)
+
+        // Create bubble content
+        let bubbleView = BubbleView(
+            workspace: workspace,
+            state: store.bubbleState(for: workspace),
+            onTap: { [weak self] in
+                Task { await self?.store.activateWorkspace(workspace) }
+            }
+        )
+        let hostingView = NSHostingView(rootView: bubbleView)
+
+        let panel = FloatingBubblePanel(
+            workspaceId: workspace.id,
+            position: position,
+            contentView: hostingView
+        )
+        panel.onMouseUp = { [weak self] id, frame in
+            self?.onRedockCheck?(id, frame)
+        }
         panel.orderFront(nil)
         panel.clampToScreen()
         panels[workspace.id] = panel
@@ -93,4 +121,14 @@ final class FloatingBubbleManager {
     }
 
     var panelCount: Int { panels.count }
+
+    func panelContentView(for workspaceId: String) -> NSView? {
+        panels[workspaceId]?.contentView
+    }
+
+    /// For testing: triggers the panel's mouseUp callback.
+    func simulateMouseUp(for workspaceId: String) {
+        guard let panel = panels[workspaceId] else { return }
+        panel.onMouseUp?(workspaceId, panel.frame)
+    }
 }

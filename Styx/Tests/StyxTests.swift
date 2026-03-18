@@ -1596,6 +1596,168 @@ final class WindowLivenessBehaviorTests: XCTestCase {
     }
 }
 
+// MARK: - Window Polling Behavior
+
+@MainActor
+final class WindowPollingBehaviorTests: XCTestCase {
+
+    func test_poll_windows_updates_liveness() async {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
+        store.config.workspaces = [ws]
+
+        let fake = FakeBridge()
+        // Bridge returns list_windows with only "pty-other"
+        await fake.setCallResult("list_windows", value: [
+            ["window_id": "pty-other", "tabs": []] as [String: Any]
+        ])
+        await store.connectBridge(fake)
+
+        await store.pollWindowLiveness()
+
+        XCTAssertNil(store.workspaces.first!.itermWindowId)
+    }
+
+    func test_poll_windows_keeps_live_windows() async {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
+        store.config.workspaces = [ws]
+
+        let fake = FakeBridge()
+        await fake.setCallResult("list_windows", value: [
+            ["window_id": "pty-1", "tabs": []] as [String: Any]
+        ])
+        await store.connectBridge(fake)
+
+        await store.pollWindowLiveness()
+
+        XCTAssertEqual(store.workspaces.first!.itermWindowId, "pty-1")
+    }
+
+    func test_poll_windows_handles_bridge_error_gracefully() async {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
+        store.config.workspaces = [ws]
+
+        let fake = FakeBridge()
+        await fake.setShouldThrow(true)
+        await store.connectBridge(fake)
+        // Reset throw for start, set for poll
+        await fake.setShouldThrow(false)
+        await fake.setShouldThrow(true)
+
+        await store.pollWindowLiveness()
+
+        // Should not crash, window ID unchanged
+        XCTAssertEqual(store.workspaces.first!.itermWindowId, "pty-1")
+    }
+}
+
+// MARK: - Floating Panel Content Behavior
+
+@MainActor
+final class FloatingPanelContentBehaviorTests: XCTestCase {
+
+    func test_floating_panel_has_bubble_content() {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "Content", color: "#FF0000", icon: "terminal", docked: false)
+        store.config.workspaces = [ws]
+        let manager = FloatingBubbleManager(store: store)
+
+        manager.showFloatingBubble(for: ws)
+
+        // Panel should have a content view (not empty)
+        XCTAssertTrue(manager.hasPanel(for: ws.id))
+        XCTAssertNotNil(manager.panelContentView(for: ws.id))
+    }
+}
+
+// MARK: - Floating Panel Redock Wiring
+
+@MainActor
+final class FloatingPanelRedockWiringTests: XCTestCase {
+
+    func test_floating_panel_mouseup_calls_redock_check() {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "A", docked: false)
+        store.config.workspaces = [ws]
+        let manager = FloatingBubbleManager(store: store)
+
+        var receivedWorkspaceId: String?
+        var receivedFrame: NSRect?
+        manager.onRedockCheck = { id, frame in
+            receivedWorkspaceId = id
+            receivedFrame = frame
+        }
+
+        manager.showFloatingBubble(for: ws)
+
+        // Simulate mouseUp on the panel
+        manager.simulateMouseUp(for: ws.id)
+
+        XCTAssertEqual(receivedWorkspaceId, ws.id)
+        XCTAssertNotNil(receivedFrame)
+    }
+}
+
+// MARK: - Sidebar Drag Callback Wiring
+
+@MainActor
+final class SidebarDragCallbackTests: XCTestCase {
+
+    func test_app_delegate_wires_drag_undock_on_launch() async {
+        let delegate = AppDelegate()
+        let ws = makeWorkspace(name: "Drag", docked: true)
+        delegate.store.config.workspaces = [ws]
+        delegate.store.config.sidebar.visible = true
+
+        let fake = FakeBridge()
+        await delegate.launch(bridge: fake)
+
+        // Simulate a completed drag that should trigger undock
+        delegate.handleDragUndock(workspaceId: ws.id, screenPoint: CGPoint(x: 300, y: 300))
+
+        XCTAssertFalse(delegate.store.workspaces.first!.docked)
+        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
+    }
+}
+
+// MARK: - Settings Save Behavior
+
+@MainActor
+final class SettingsSaveBehaviorTests: XCTestCase {
+
+    func test_save_config_after_sidebar_width_change_persists() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let url = tempDir.appendingPathComponent("workspaces.json")
+
+        let store = WorkspaceStore()
+        store.config.sidebar.width = 96
+        store.saveConfig(to: url)
+
+        let store2 = WorkspaceStore()
+        store2.loadConfig(from: url)
+        XCTAssertEqual(store2.config.sidebar.width, 96)
+    }
+
+    func test_save_config_after_hotkey_change_persists() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let url = tempDir.appendingPathComponent("workspaces.json")
+
+        let store = WorkspaceStore()
+        store.config.hotkeys.toggleSidebar = "Cmd+Shift+X"
+        store.saveConfig(to: url)
+
+        let store2 = WorkspaceStore()
+        store2.loadConfig(from: url)
+        XCTAssertEqual(store2.config.hotkeys.toggleSidebar, "Cmd+Shift+X")
+    }
+}
+
 // MARK: - AnyCodable Edge Cases
 
 final class AnyCodableEdgeCaseTests: XCTestCase {

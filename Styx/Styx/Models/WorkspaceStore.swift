@@ -56,6 +56,19 @@ final class WorkspaceStore {
         }
     }
 
+    // MARK: - Window Polling
+
+    func pollWindowLiveness() async {
+        do {
+            let result = try await bridge?.call("list_windows", args: [:])
+            guard let windows = result as? [[String: Any]] else { return }
+            let activeIds = Set(windows.compactMap { $0["window_id"] as? String })
+            refreshWindowLiveness(activeWindowIds: activeIds)
+        } catch {
+            logger.warning("Window poll failed: \(error)")
+        }
+    }
+
     // MARK: - Dock / Undock
 
     func undockWorkspace(_ id: String, position: CGPoint) {
