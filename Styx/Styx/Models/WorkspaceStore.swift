@@ -72,6 +72,16 @@ final class WorkspaceStore {
         }
     }
 
+    // MARK: - Rename
+
+    func renameWorkspace(_ id: String, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        guard let index = workspaces.firstIndex(where: { $0.id == id }) else { return }
+        workspaces[index].name = trimmed
+        saveConfig()
+    }
+
     // MARK: - Dock / Undock
 
     func undockWorkspace(_ id: String, position: CGPoint) {
@@ -191,7 +201,7 @@ final class WorkspaceStore {
 
     // MARK: - Capture Current Window
 
-    func captureCurrentWindow(name: String, color: String, icon: String) async {
+    func captureCurrentWindow(name: String? = nil, color: String, icon: String) async {
         do {
             let result = try await bridge?.call("get_active_window", args: [:])
             guard let data = result as? [String: Any],
@@ -204,8 +214,11 @@ final class WorkspaceStore {
                 return WorkspaceTab(name: sessionName, dir: nil, cmd: nil)
             }
 
+            // Use provided name, or derive from first session
+            let resolvedName = name ?? tabs.first?.name ?? "Workspace"
+
             let workspace = Workspace(
-                name: name, color: color, icon: icon,
+                name: resolvedName, color: color, icon: icon,
                 sortOrder: workspaces.count,
                 itermWindowId: windowId, tabs: tabs
             )

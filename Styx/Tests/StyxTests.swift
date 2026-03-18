@@ -2019,6 +2019,90 @@ final class AccessibilityPermissionTests: XCTestCase {
     }
 }
 
+// MARK: - Rename Workspace
+
+@MainActor
+final class RenameWorkspaceTests: XCTestCase {
+
+    func test_rename_workspace_changes_name() {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "Old")
+        store.config.workspaces = [ws]
+
+        store.renameWorkspace(ws.id, to: "New")
+
+        XCTAssertEqual(store.workspaces.first?.name, "New")
+    }
+
+    func test_rename_nonexistent_workspace_is_noop() {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "A")
+        store.config.workspaces = [ws]
+
+        store.renameWorkspace("bogus-id", to: "New")
+
+        XCTAssertEqual(store.workspaces.first?.name, "A")
+    }
+
+    func test_rename_trims_whitespace() {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "Old")
+        store.config.workspaces = [ws]
+
+        store.renameWorkspace(ws.id, to: "  New Name  ")
+
+        XCTAssertEqual(store.workspaces.first?.name, "New Name")
+    }
+
+    func test_rename_empty_string_keeps_old_name() {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "Keep")
+        store.config.workspaces = [ws]
+
+        store.renameWorkspace(ws.id, to: "   ")
+
+        XCTAssertEqual(store.workspaces.first?.name, "Keep")
+    }
+}
+
+// MARK: - Capture Uses Session Name
+
+@MainActor
+final class CaptureAutoNameTests: XCTestCase {
+
+    func test_capture_uses_first_session_name_when_no_name_given() async {
+        let store = WorkspaceStore()
+        let fake = FakeBridge()
+        await fake.setCallResult("get_active_window", value: [
+            "window_id": "pty-auto",
+            "tabs": [
+                ["tab_id": "t1", "sessions": [["session_id": "s1", "name": "~/projects/backend"]]] as [String: Any],
+            ] as [[String: Any]],
+        ] as [String: Any])
+        await store.connectBridge(fake)
+
+        await store.captureCurrentWindow(name: nil, color: "#4A90D9", icon: "terminal")
+
+        XCTAssertEqual(store.workspaces.first?.name, "~/projects/backend")
+    }
+
+    func test_capture_with_explicit_name_uses_it() async {
+        let store = WorkspaceStore()
+        let fake = FakeBridge()
+        await fake.setCallResult("get_active_window", value: [
+            "window_id": "pty-named",
+            "tabs": [
+                ["tab_id": "t1", "sessions": [["session_id": "s1", "name": "~/stuff"]]] as [String: Any],
+            ] as [[String: Any]],
+        ] as [String: Any])
+        await store.connectBridge(fake)
+
+        await store.captureCurrentWindow(name: "MyName", color: "#4A90D9", icon: "terminal")
+
+        XCTAssertEqual(store.workspaces.first?.name, "MyName")
+    }
+}
+
 final class AnyCodableEdgeCaseTests: XCTestCase {
 
     func test_nested_dict_roundtrip() throws {

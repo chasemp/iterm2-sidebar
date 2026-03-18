@@ -204,7 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Hotkey Registration
 
     func captureCurrentWindow() async {
-        await store.captureCurrentWindow(name: "Captured", color: "#4A90D9", icon: "terminal")
+        await store.captureCurrentWindow(color: "#4A90D9", icon: "terminal")
         sidebarController.refresh()
     }
 

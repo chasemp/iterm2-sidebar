@@ -5,6 +5,8 @@ struct BubbleListView: View {
     var onDragChanged: ((String, CGSize) -> Void)?
     var onDragEnded: ((String) -> Void)?
     @State private var showQuickAdd = false
+    @State private var renamingWorkspaceId: String?
+    @State private var renameText = ""
 
     private var dockedWorkspaces: [Workspace] {
         store.workspaces.filter(\.docked).sorted { $0.sortOrder < $1.sortOrder }
@@ -29,9 +31,27 @@ struct BubbleListView: View {
                             }
                         )
                         .contextMenu {
+                            Button("Rename...") {
+                                renameText = workspace.name
+                                renamingWorkspaceId = workspace.id
+                            }
+                            Divider()
                             Button("Delete Workspace") {
                                 Task { await store.deleteWorkspace(workspace) }
                             }
+                        }
+                        .popover(isPresented: Binding(
+                            get: { renamingWorkspaceId == workspace.id },
+                            set: { if !$0 { renamingWorkspaceId = nil } }
+                        )) {
+                            RenamePopover(
+                                name: $renameText,
+                                onConfirm: {
+                                    store.renameWorkspace(workspace.id, to: renameText)
+                                    renamingWorkspaceId = nil
+                                },
+                                onCancel: { renamingWorkspaceId = nil }
+                            )
                         }
                     }
                 }
@@ -51,5 +71,32 @@ struct BubbleListView: View {
                 QuickAddView(store: store, isPresented: $showQuickAdd)
             }
         }
+    }
+}
+
+// MARK: - Rename Popover
+
+struct RenamePopover: View {
+    @Binding var name: String
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text("Rename Workspace").font(.headline)
+            TextField("Name", text: $name)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit(onConfirm)
+            HStack {
+                Spacer()
+                Button("Cancel", action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                Button("Rename", action: onConfirm)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 200)
     }
 }
