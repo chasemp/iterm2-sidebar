@@ -44,16 +44,27 @@ final class SidebarPanelController {
     private var panel: SidebarPanel?
     private let store: WorkspaceStore
 
+    var onDragChanged: ((String, CGSize) -> Void)?
+    var onDragEnded: ((String) -> Void)?
+
     init(store: WorkspaceStore) {
         self.store = store
     }
 
     func show() {
         if panel == nil {
-            let rootView = BubbleListView(store: store)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+            let rootView = BubbleListView(
+                store: store,
+                onDragChanged: { [weak self] id, translation in
+                    self?.onDragChanged?(id, translation)
+                },
+                onDragEnded: { [weak self] id in
+                    self?.onDragEnded?(id)
+                }
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
             let hostingView = NSHostingView(rootView: rootView)
             panel = SidebarPanel(contentView: hostingView, width: store.config.sidebar.width)
             panel?.updatePosition(store.config.sidebar.position, width: store.config.sidebar.width)

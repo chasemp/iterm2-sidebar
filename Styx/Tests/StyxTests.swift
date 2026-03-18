@@ -1860,6 +1860,80 @@ final class SidebarDragFlowTests: XCTestCase {
     }
 }
 
+// MARK: - Sidebar Drag Callback Wiring
+
+@MainActor
+final class SidebarDragCallbackWiringTests: XCTestCase {
+
+    func test_sidebar_controller_accepts_drag_callbacks() {
+        let store = WorkspaceStore()
+        let controller = SidebarPanelController(store: store)
+
+        var receivedId: String?
+        var receivedTranslation: CGSize?
+        controller.onDragChanged = { id, translation in
+            receivedId = id
+            receivedTranslation = translation
+        }
+
+        XCTAssertNotNil(controller.onDragChanged)
+    }
+
+    func test_sidebar_controller_accepts_drag_ended_callback() {
+        let store = WorkspaceStore()
+        let controller = SidebarPanelController(store: store)
+
+        var endedId: String?
+        controller.onDragEnded = { id in endedId = id }
+
+        XCTAssertNotNil(controller.onDragEnded)
+    }
+
+    func test_launch_wires_drag_callbacks_to_sidebar() async {
+        let delegate = AppDelegate()
+        delegate.store.config.sidebar.visible = true
+        let fake = FakeBridge()
+        await fake.setCallResult("list_windows", value: [[String: Any]]())
+        await delegate.launch(bridge: fake)
+
+        XCTAssertNotNil(delegate.sidebarController.onDragChanged)
+        XCTAssertNotNil(delegate.sidebarController.onDragEnded)
+    }
+}
+
+// MARK: - Bridge Script Bundling
+
+final class BridgeScriptBundlingTests: XCTestCase {
+
+    func test_bridge_script_exists_at_development_path() {
+        // The bridge_daemon.py should be findable relative to the project
+        let projectDir = URL(fileURLWithPath: #file)
+            .deletingLastPathComponent() // Tests/
+            .deletingLastPathComponent() // Styx/
+        let bridgePath = projectDir.appendingPathComponent("StyxBridge/bridge_daemon.py")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: bridgePath.path),
+                       "bridge_daemon.py should exist at \(bridgePath.path)")
+    }
+
+    func test_bridge_commands_script_exists() {
+        let projectDir = URL(fileURLWithPath: #file)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let commandsPath = projectDir.appendingPathComponent("StyxBridge/commands.py")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: commandsPath.path),
+                       "commands.py should exist at \(commandsPath.path)")
+    }
+
+    func test_requirements_file_exists() {
+        let projectDir = URL(fileURLWithPath: #file)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let reqPath = projectDir.appendingPathComponent("StyxBridge/requirements.txt")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: reqPath.path),
+                       "requirements.txt should exist at \(reqPath.path)")
+    }
+}
+
 // MARK: - AnyCodable Edge Cases
 
 final class AnyCodableEdgeCaseTests: XCTestCase {

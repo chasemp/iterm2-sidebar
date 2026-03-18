@@ -163,7 +163,7 @@
 		T10001 /* Styx */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = X20001;
-			buildPhases = (S10001, F10001, R10001);
+			buildPhases = (S10001, F10001, R10001, CP0001 /* Copy Bridge Scripts */);
 			buildRules = ();
 			dependencies = ();
 			name = Styx;
@@ -212,6 +212,28 @@
 /* Begin PBXResourcesBuildPhase section */
 		R10001 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		CP0001 /* Copy Bridge Scripts */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = (
+				"$(SRCROOT)/StyxBridge/bridge_daemon.py",
+				"$(SRCROOT)/StyxBridge/commands.py",
+				"$(SRCROOT)/StyxBridge/requirements.txt",
+			);
+			name = "Copy Bridge Scripts";
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Resources/StyxBridge/bridge_daemon.py",
+				"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Resources/StyxBridge/commands.py",
+				"$(BUILT_PRODUCTS_DIR)/$(PRODUCT_NAME).app/Contents/Resources/StyxBridge/requirements.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "mkdir -p \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/StyxBridge\"\ncp -f \"${SRCROOT}/StyxBridge/bridge_daemon.py\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/StyxBridge/\"\ncp -f \"${SRCROOT}/StyxBridge/commands.py\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/StyxBridge/\"\ncp -f \"${SRCROOT}/StyxBridge/requirements.txt\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/StyxBridge/\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		S10001 /* Sources */ = {

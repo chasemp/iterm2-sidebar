@@ -74,6 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var sidebarController = SidebarPanelController(store: store)
     lazy var floatingManager = FloatingBubbleManager(store: store)
     let hotkeyRegistrar = HotkeyRegistrar()
+    private var dragStateMachine = BubbleDragStateMachine()
     private var focusTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
 
@@ -114,6 +115,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Testable launch — accepts injected bridge.
     func launch(bridge: any BridgeService) async {
         await store.connectBridge(bridge)
+
+        // Wire sidebar drag callbacks
+        sidebarController.onDragChanged = { [weak self] id, translation in
+            self?.dragStateMachine.dragChanged(workspaceId: id, translation: translation)
+        }
+        sidebarController.onDragEnded = { [weak self] id in
+            guard let self else { return }
+            guard let draggedId = self.dragStateMachine.dragEnded() else { return }
+            let screenPoint = NSEvent.mouseLocation
+            if let sidebarFrame = self.sidebarController.panelFrame {
+                var dockZone = DockZone(sidebarFrame: sidebarFrame)
+                if !dockZone.contains(screenPoint) {
+                    self.handleDragUndock(workspaceId: draggedId, screenPoint: screenPoint)
+                }
+            }
+        }
 
         if store.sidebarVisible {
             sidebarController.show()
