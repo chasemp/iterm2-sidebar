@@ -184,7 +184,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private var isRunningTests: Bool {
+        NSClassFromString("XCTestCase") != nil
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard !isRunningTests else { return }
+
         NSApp.setActivationPolicy(.accessory)
         AccessibilityChecker.promptIfNeeded()
 
