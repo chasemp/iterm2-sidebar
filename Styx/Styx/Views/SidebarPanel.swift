@@ -50,8 +50,12 @@ final class SidebarPanelController {
 
     func show() {
         if panel == nil {
-            let placeholder = NSView(frame: NSRect(x: 0, y: 0, width: 72, height: 600))
-            panel = SidebarPanel(contentView: placeholder, width: store.config.sidebar.width)
+            let rootView = BubbleListView(store: store)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            let hostingView = NSHostingView(rootView: rootView)
+            panel = SidebarPanel(contentView: hostingView, width: store.config.sidebar.width)
             panel?.updatePosition(store.config.sidebar.position, width: store.config.sidebar.width)
         }
         panel?.orderFront(nil)

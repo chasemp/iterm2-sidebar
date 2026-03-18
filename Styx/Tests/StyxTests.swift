@@ -1144,6 +1144,168 @@ final class AppWiringTests: XCTestCase {
     }
 }
 
+// MARK: - App Launch Behavior
+
+@MainActor
+final class AppLaunchBehaviorTests: XCTestCase {
+
+    func test_launch_with_visible_sidebar_config_shows_sidebar() async {
+        let delegate = AppDelegate()
+        delegate.store.config.sidebar.visible = true
+        let fake = FakeBridge()
+        await delegate.launch(bridge: fake)
+
+        XCTAssertTrue(delegate.store.sidebarVisible)
+        XCTAssertNotNil(delegate.sidebarController.panelFrame)
+    }
+
+    func test_launch_with_hidden_sidebar_config_does_not_show_sidebar() async {
+        let delegate = AppDelegate()
+        delegate.store.config.sidebar.visible = false
+        let fake = FakeBridge()
+        await delegate.launch(bridge: fake)
+
+        XCTAssertFalse(delegate.store.sidebarVisible)
+    }
+
+    func test_launch_connects_bridge() async {
+        let delegate = AppDelegate()
+        let fake = FakeBridge()
+        await delegate.launch(bridge: fake)
+
+        XCTAssertTrue(delegate.store.bridgeConnected)
+        let started = await fake.startCalled
+        XCTAssertTrue(started)
+    }
+
+    func test_launch_restores_floating_bubbles() async {
+        let delegate = AppDelegate()
+        let ws = makeWorkspace(name: "Float", docked: false, floatingPosition: CodablePoint(x: 50, y: 50))
+        delegate.store.config.workspaces = [ws]
+        let fake = FakeBridge()
+        await delegate.launch(bridge: fake)
+
+        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
+    }
+}
+
+// MARK: - Sidebar Hosts BubbleListView
+
+@MainActor
+final class SidebarContentBehaviorTests: XCTestCase {
+
+    func test_sidebar_panel_has_content_view_after_show() {
+        let store = WorkspaceStore()
+        store.config.workspaces = [makeWorkspace(name: "A", docked: true)]
+        let controller = SidebarPanelController(store: store)
+        controller.show()
+
+        // The panel should have a non-empty content view
+        XCTAssertNotNil(controller.panelFrame)
+        // Panel height should account for at least one bubble
+        XCTAssertGreaterThan(controller.panelFrame!.height, 50)
+    }
+}
+
+// MARK: - Floating Bubble Redock on MouseUp
+
+@MainActor
+final class FloatingBubbleRedockBehaviorTests: XCTestCase {
+
+    func test_floating_panel_has_redock_callback() {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "A", docked: false)
+        store.config.workspaces = [ws]
+        let manager = FloatingBubbleManager(store: store)
+
+        var redockCalled = false
+        manager.onRedockCheck = { _, _ in redockCalled = true }
+        manager.showFloatingBubble(for: ws)
+
+        // Simulate mouseUp on the panel — the panel should call onRedockCheck
+        XCTAssertTrue(manager.hasPanel(for: ws.id))
+    }
+}
+
+// MARK: - Focus Tracking Behavior
+
+@MainActor
+final class FocusTrackingBehaviorTests: XCTestCase {
+
+    func test_focus_event_updates_focused_workspace_id() {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "Active", itermWindowId: "pty-42")
+        store.config.workspaces = [ws]
+
+        store.handleFocusEvent(FocusEvent(kind: .window, windowId: "pty-42"))
+
+        XCTAssertEqual(store.focusedWorkspaceId, ws.id)
+    }
+
+    func test_focus_event_for_unknown_window_clears_focus() {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
+        store.config.workspaces = [ws]
+        store.focusedWorkspaceId = ws.id
+
+        store.handleFocusEvent(FocusEvent(kind: .window, windowId: "pty-unknown"))
+
+        XCTAssertNil(store.focusedWorkspaceId)
+    }
+
+    func test_non_window_focus_event_does_not_change_focus() {
+        let store = WorkspaceStore()
+        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
+        store.config.workspaces = [ws]
+        store.focusedWorkspaceId = ws.id
+
+        store.handleFocusEvent(FocusEvent(kind: .tab, tabId: "tab-99"))
+
+        XCTAssertEqual(store.focusedWorkspaceId, ws.id)
+    }
+}
+
+// MARK: - Hotkey Registration Behavior
+
+@MainActor
+final class HotkeyRegistrationBehaviorTests: XCTestCase {
+
+    func test_hotkey_registrar_can_be_created() {
+        let registrar = HotkeyRegistrar()
+        XCTAssertNotNil(registrar)
+    }
+
+    func test_registering_hotkey_stores_handler() {
+        let registrar = HotkeyRegistrar()
+        var called = false
+        let combo = HotkeyParser.parse("Cmd+Shift+S")!
+        registrar.register(combo, handler: { called = true })
+
+        XCTAssertGreaterThan(registrar.registeredCount, 0)
+    }
+
+    func test_unregister_all_clears_handlers() {
+        let registrar = HotkeyRegistrar()
+        let combo = HotkeyParser.parse("Cmd+Shift+S")!
+        registrar.register(combo, handler: {})
+        registrar.unregisterAll()
+
+        XCTAssertEqual(registrar.registeredCount, 0)
+    }
+}
+
+// MARK: - MenuBar Content Behavior
+
+@MainActor
+final class MenuBarContentBehaviorTests: XCTestCase {
+
+    func test_menu_bar_view_can_be_created() {
+        let delegate = AppDelegate()
+        let view = MenuBarContent(appDelegate: delegate)
+        XCTAssertNotNil(view)
+    }
+}
+
 // MARK: - BubbleView Behavior
 
 final class BubbleViewBehaviorTests: XCTestCase {

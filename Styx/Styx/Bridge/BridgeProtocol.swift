@@ -65,6 +65,13 @@ struct FocusEvent {
     let tabId: String?
     let sessionId: String?
 
+    init(kind: Kind, windowId: String? = nil, tabId: String? = nil, sessionId: String? = nil) {
+        self.kind = kind
+        self.windowId = windowId
+        self.tabId = tabId
+        self.sessionId = sessionId
+    }
+
     init?(from response: BridgeResponse) {
         guard response.event == "focus_changed",
               let data = response.data?.value as? [String: Any],

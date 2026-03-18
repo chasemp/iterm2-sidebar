@@ -34,6 +34,17 @@ final class WorkspaceStore {
         return .dormant
     }
 
+    // MARK: - Focus Tracking
+
+    func handleFocusEvent(_ event: FocusEvent) {
+        guard event.kind == .window, let windowId = event.windowId else { return }
+        if let workspace = workspaces.first(where: { $0.itermWindowId == windowId }) {
+            focusedWorkspaceId = workspace.id
+        } else {
+            focusedWorkspaceId = nil
+        }
+    }
+
     // MARK: - Dock / Undock
 
     func undockWorkspace(_ id: String, position: CGPoint) {

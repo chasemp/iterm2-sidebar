@@ -41,6 +41,8 @@ final class FloatingBubbleManager {
     private var panels: [String: FloatingBubblePanel] = [:]
     private let store: WorkspaceStore
 
+    var onRedockCheck: ((String, NSRect) -> Void)?
+
     init(store: WorkspaceStore) {
         self.store = store
     }

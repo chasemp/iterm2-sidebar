@@ -12,6 +12,7 @@
 		A298FD5 /* BubbleDragStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B298FD5; };
 		A8DC94C /* DockZone.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8DC94C; };
 		AF0C8D8 /* HotkeyParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF0C8D8; };
+		A8AE775 /* HotkeyRegistrar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AE775; };
 		A00CA0B /* BubbleState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00CA0B; };
 		AA05C4E /* HexColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA05C4E; };
 		AF4A076 /* Workspace.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF4A076; };
@@ -42,6 +43,7 @@
 		B298FD5 /* BubbleDragStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleDragStateMachine.swift; sourceTree = "<group>"; };
 		B8DC94C /* DockZone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockZone.swift; sourceTree = "<group>"; };
 		BF0C8D8 /* HotkeyParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyParser.swift; sourceTree = "<group>"; };
+		B8AE775 /* HotkeyRegistrar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRegistrar.swift; sourceTree = "<group>"; };
 		B00CA0B /* BubbleState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleState.swift; sourceTree = "<group>"; };
 		BA05C4E /* HexColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HexColor.swift; sourceTree = "<group>"; };
 		BF4A076 /* Workspace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workspace.swift; sourceTree = "<group>"; };
@@ -112,6 +114,7 @@
 			isa = PBXGroup;
 			children = (
 				BF0C8D8 /* HotkeyParser.swift */,
+				B8AE775 /* HotkeyRegistrar.swift */,
 			);
 			path = Hotkeys;
 			sourceTree = "<group>";
@@ -220,6 +223,7 @@
 				A298FD5 /* BubbleDragStateMachine.swift in Sources */,
 				A8DC94C /* DockZone.swift in Sources */,
 				AF0C8D8 /* HotkeyParser.swift in Sources */,
+				A8AE775 /* HotkeyRegistrar.swift in Sources */,
 				A00CA0B /* BubbleState.swift in Sources */,
 				AA05C4E /* HexColor.swift in Sources */,
 				AF4A076 /* Workspace.swift in Sources */,
