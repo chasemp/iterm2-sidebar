@@ -1791,6 +1791,75 @@ final class LaunchWiringCompletenessTests: XCTestCase {
     }
 }
 
+// MARK: - Sidebar Drag Flow End-to-End
+
+@MainActor
+final class SidebarDragFlowTests: XCTestCase {
+
+    func test_full_undock_flow_via_app_delegate() async {
+        let delegate = AppDelegate()
+        let ws = makeWorkspace(name: "Undock", docked: true)
+        delegate.store.config.workspaces = [ws]
+        delegate.store.config.sidebar.visible = true
+
+        let fake = FakeBridge()
+        await fake.setCallResult("list_windows", value: [[String: Any]]())
+        await delegate.launch(bridge: fake)
+
+        // Step 1: Drag state machine transitions to active
+        var machine = BubbleDragStateMachine()
+        machine.dragChanged(workspaceId: ws.id, translation: CGSize(width: 10, height: 0))
+        machine.dragChanged(workspaceId: ws.id, translation: CGSize(width: 25, height: 0))
+        guard let draggedId = machine.dragEnded() else {
+            XCTFail("Expected active drag")
+            return
+        }
+
+        // Step 2: Drop outside sidebar triggers undock
+        delegate.handleDragUndock(workspaceId: draggedId, screenPoint: CGPoint(x: 300, y: 400))
+
+        // Verify end state
+        XCTAssertFalse(delegate.store.workspaces.first!.docked)
+        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
+
+        // Step 3: Recall all brings it back
+        delegate.recallAll()
+        XCTAssertTrue(delegate.store.workspaces.first!.docked)
+        XCTAssertFalse(delegate.floatingManager.hasPanel(for: ws.id))
+    }
+
+    func test_full_redock_flow_via_floating_panel() async {
+        let delegate = AppDelegate()
+        let ws = makeWorkspace(name: "Redock", docked: false, floatingPosition: CodablePoint(x: 200, y: 200))
+        delegate.store.config.workspaces = [ws]
+        delegate.store.config.sidebar.visible = true
+
+        let fake = FakeBridge()
+        await fake.setCallResult("list_windows", value: [[String: Any]]())
+        await delegate.launch(bridge: fake)
+
+        // Floating bubble should exist
+        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
+
+        // Simulate mouseUp over sidebar
+        guard let sidebarFrame = delegate.sidebarController.panelFrame else {
+            XCTFail("Sidebar should have a frame")
+            return
+        }
+        let overSidebar = NSRect(
+            x: sidebarFrame.midX - 36,
+            y: sidebarFrame.midY - 40,
+            width: 72,
+            height: 80
+        )
+        delegate.handleRedockCheck(workspaceId: ws.id, panelFrame: overSidebar)
+
+        // Verify redocked
+        XCTAssertTrue(delegate.store.workspaces.first!.docked)
+        XCTAssertFalse(delegate.floatingManager.hasPanel(for: ws.id))
+    }
+}
+
 // MARK: - AnyCodable Edge Cases
 
 final class AnyCodableEdgeCaseTests: XCTestCase {
