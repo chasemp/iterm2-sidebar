@@ -11,6 +11,7 @@
 		A5FC06D /* ITerm2Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5FC06D; };
 		A298FD5 /* BubbleDragStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B298FD5; };
 		A8DC94C /* DockZone.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8DC94C; };
+		A3C58DB /* AccessibilityChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C58DB; };
 		AF0C8D8 /* HotkeyParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF0C8D8; };
 		A8AE775 /* HotkeyRegistrar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AE775; };
 		A00CA0B /* BubbleState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00CA0B; };
@@ -42,6 +43,7 @@
 		B5FC06D /* ITerm2Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ITerm2Bridge.swift; sourceTree = "<group>"; };
 		B298FD5 /* BubbleDragStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleDragStateMachine.swift; sourceTree = "<group>"; };
 		B8DC94C /* DockZone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockZone.swift; sourceTree = "<group>"; };
+		B3C58DB /* AccessibilityChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityChecker.swift; sourceTree = "<group>"; };
 		BF0C8D8 /* HotkeyParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyParser.swift; sourceTree = "<group>"; };
 		B8AE775 /* HotkeyRegistrar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRegistrar.swift; sourceTree = "<group>"; };
 		B00CA0B /* BubbleState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleState.swift; sourceTree = "<group>"; };
@@ -113,6 +115,7 @@
 		G45E6B3 /* Hotkeys */ = {
 			isa = PBXGroup;
 			children = (
+				B3C58DB /* AccessibilityChecker.swift */,
 				BF0C8D8 /* HotkeyParser.swift */,
 				B8AE775 /* HotkeyRegistrar.swift */,
 			);
@@ -244,6 +247,7 @@
 				A5FC06D /* ITerm2Bridge.swift in Sources */,
 				A298FD5 /* BubbleDragStateMachine.swift in Sources */,
 				A8DC94C /* DockZone.swift in Sources */,
+				A3C58DB /* AccessibilityChecker.swift in Sources */,
 				AF0C8D8 /* HotkeyParser.swift in Sources */,
 				A8AE775 /* HotkeyRegistrar.swift in Sources */,
 				A00CA0B /* BubbleState.swift in Sources */,

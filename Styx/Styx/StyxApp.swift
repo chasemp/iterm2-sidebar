@@ -22,6 +22,12 @@ struct StyxApp: App {
 struct MenuBarContent: View {
     let appDelegate: AppDelegate
 
+    private var bridgeStatusText: String {
+        if !appDelegate.store.bridgeConnected { return "Bridge disconnected" }
+        if !appDelegate.store.iTerm2Reachable { return "iTerm2 not responding" }
+        return "Connected"
+    }
+
     var body: some View {
         VStack {
             Button(appDelegate.store.sidebarVisible ? "Hide Sidebar" : "Show Sidebar") {
@@ -30,6 +36,10 @@ struct MenuBarContent: View {
 
             Button("Recall All Bubbles") {
                 appDelegate.recallAll()
+            }
+
+            Button("Capture Current Window") {
+                Task { await appDelegate.captureCurrentWindow() }
             }
 
             Divider()
@@ -50,7 +60,7 @@ struct MenuBarContent: View {
                 Circle()
                     .fill(appDelegate.store.bridgeConnected ? .green : .red)
                     .frame(width: 8, height: 8)
-                Text(appDelegate.store.bridgeConnected ? "Connected" : "Disconnected")
+                Text(bridgeStatusText)
                     .font(.caption)
             }
 
@@ -176,6 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        AccessibilityChecker.promptIfNeeded()
 
         Task { @MainActor in
             let bridge = ITerm2Bridge()
@@ -191,6 +202,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     // MARK: - Hotkey Registration
+
+    func captureCurrentWindow() async {
+        await store.captureCurrentWindow(name: "Captured", color: "#4A90D9", icon: "terminal")
+        sidebarController.refresh()
+    }
 
     func reregisterHotkeys() {
         hotkeyRegistrar.unregisterAll()
