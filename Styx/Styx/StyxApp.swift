@@ -85,6 +85,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         sidebarController.refresh()
     }
 
+    func handleDragUndock(workspaceId: String, screenPoint: CGPoint) {
+        store.undockWorkspace(workspaceId, position: screenPoint)
+        if let workspace = store.workspaces.first(where: { $0.id == workspaceId }) {
+            floatingManager.showFloatingBubble(for: workspace)
+        }
+        sidebarController.refresh()
+    }
+
+    func handleRedockCheck(workspaceId: String, panelFrame: NSRect) {
+        guard let sidebarFrame = sidebarController.panelFrame else { return }
+        var dockZone = DockZone(sidebarFrame: sidebarFrame)
+        let center = CGPoint(x: panelFrame.midX, y: panelFrame.midY)
+        if dockZone.contains(center) {
+            let sortOrder = dockZone.insertionIndex(
+                at: center,
+                bubbleCount: store.workspaces.filter(\.docked).count
+            )
+            store.redockWorkspace(workspaceId, atSortOrder: sortOrder)
+            floatingManager.hideFloatingBubble(for: workspaceId)
+            sidebarController.refresh()
+        }
+    }
+
     /// Testable launch — accepts injected bridge.
     func launch(bridge: any BridgeService) async {
         await store.connectBridge(bridge)

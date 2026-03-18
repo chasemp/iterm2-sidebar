@@ -45,6 +45,17 @@ final class WorkspaceStore {
         }
     }
 
+    // MARK: - Window Liveness
+
+    func refreshWindowLiveness(activeWindowIds: Set<String>) {
+        for i in workspaces.indices {
+            if let windowId = workspaces[i].itermWindowId,
+               !activeWindowIds.contains(windowId) {
+                workspaces[i].itermWindowId = nil
+            }
+        }
+    }
+
     // MARK: - Dock / Undock
 
     func undockWorkspace(_ id: String, position: CGPoint) {

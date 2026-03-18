@@ -1512,6 +1512,90 @@ final class SettingsViewBehaviorTests: XCTestCase {
     }
 }
 
+// MARK: - App Drag Wiring Behavior
+
+@MainActor
+final class AppDragWiringTests: XCTestCase {
+
+    func test_handle_drag_undock_creates_floating_panel() {
+        let delegate = AppDelegate()
+        let ws = makeWorkspace(name: "Drag", docked: true)
+        delegate.store.config.workspaces = [ws]
+        delegate.sidebarController.show()
+
+        delegate.handleDragUndock(workspaceId: ws.id, screenPoint: CGPoint(x: 300, y: 400))
+
+        XCTAssertFalse(delegate.store.workspaces.first!.docked)
+        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
+    }
+
+    func test_handle_redock_check_redocks_when_over_sidebar() {
+        let delegate = AppDelegate()
+        let ws = makeWorkspace(name: "Float", docked: false)
+        delegate.store.config.workspaces = [ws]
+        delegate.sidebarController.show()
+        delegate.floatingManager.showFloatingBubble(for: ws)
+
+        guard let sidebarFrame = delegate.sidebarController.panelFrame else {
+            XCTFail("Sidebar should have a frame")
+            return
+        }
+
+        let overSidebar = NSRect(
+            x: sidebarFrame.midX - 36,
+            y: sidebarFrame.midY - 40,
+            width: 72,
+            height: 80
+        )
+        delegate.handleRedockCheck(workspaceId: ws.id, panelFrame: overSidebar)
+
+        XCTAssertTrue(delegate.store.workspaces.first!.docked)
+        XCTAssertFalse(delegate.floatingManager.hasPanel(for: ws.id))
+    }
+
+    func test_handle_redock_check_ignores_when_not_over_sidebar() {
+        let delegate = AppDelegate()
+        let ws = makeWorkspace(name: "Float", docked: false)
+        delegate.store.config.workspaces = [ws]
+        delegate.sidebarController.show()
+        delegate.floatingManager.showFloatingBubble(for: ws)
+
+        let farAway = NSRect(x: 500, y: 500, width: 72, height: 80)
+        delegate.handleRedockCheck(workspaceId: ws.id, panelFrame: farAway)
+
+        XCTAssertFalse(delegate.store.workspaces.first!.docked)
+        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
+    }
+}
+
+// MARK: - Window Liveness Behavior
+
+@MainActor
+final class WindowLivenessBehaviorTests: XCTestCase {
+
+    func test_refresh_clears_stale_window_ids() {
+        let store = WorkspaceStore()
+        var ws = makeWorkspace(name: "Stale", itermWindowId: "pty-gone")
+        store.config.workspaces = [ws]
+
+        let activeWindowIds: Set<String> = ["pty-other"]
+        store.refreshWindowLiveness(activeWindowIds: activeWindowIds)
+
+        XCTAssertNil(store.workspaces.first!.itermWindowId)
+    }
+
+    func test_refresh_keeps_active_window_ids() {
+        let store = WorkspaceStore()
+        var ws = makeWorkspace(name: "Active", itermWindowId: "pty-alive")
+        store.config.workspaces = [ws]
+
+        let activeWindowIds: Set<String> = ["pty-alive", "pty-other"]
+        store.refreshWindowLiveness(activeWindowIds: activeWindowIds)
+
+        XCTAssertEqual(store.workspaces.first!.itermWindowId, "pty-alive")
+    }
+}
+
 // MARK: - AnyCodable Edge Cases
 
 final class AnyCodableEdgeCaseTests: XCTestCase {
