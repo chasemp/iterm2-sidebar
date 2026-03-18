@@ -112,4 +112,21 @@ async def main(connection: iterm2.Connection) -> None:
 
 
 if __name__ == "__main__":
-    iterm2.run_forever(main)
+    try:
+        iterm2.run_forever(main)
+    except Exception as exc:
+        # Surface connection failures clearly on stderr and as a JSON error on stdout
+        # so the Swift host can distinguish "iTerm2 not reachable" from a crash.
+        msg = str(exc) or type(exc).__name__
+        if "connect" in msg.lower() or "iterm2" in msg.lower() or isinstance(exc, ConnectionRefusedError):
+            msg = (
+                "Could not connect to iTerm2. "
+                "Ensure iTerm2 is running and its Python API is enabled "
+                "(Settings > General > Magic > Enable Python API)."
+            )
+        sys.stderr.write(f"StyxBridge: {msg}\n")
+        sys.stderr.flush()
+        error_response = json.dumps({"id": None, "ok": False, "error": msg})
+        sys.stdout.write(error_response + "\n")
+        sys.stdout.flush()
+        sys.exit(1)

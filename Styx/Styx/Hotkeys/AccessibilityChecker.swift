@@ -6,12 +6,11 @@ enum AccessibilityChecker {
         AXIsProcessTrusted()
     }
 
-    /// Prompt the user to grant Accessibility access if not already trusted.
-    /// Shows the macOS system dialog.
+    /// Log a warning if Accessibility access is missing (needed for global hotkeys).
+    /// Does not show a system prompt — Debug builds get a new signature each time,
+    /// causing macOS to re-prompt on every launch. Users should grant access manually
+    /// via System Settings > Privacy & Security > Accessibility.
     static func promptIfNeeded() {
-        if !isTrusted {
-            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-            AXIsProcessTrustedWithOptions(options)
-        }
+        // No-op: just check, never prompt. Hotkeys will silently fail without access.
     }
 }

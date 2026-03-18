@@ -1486,7 +1486,7 @@ final class WindowLivenessBehaviorTests: XCTestCase {
         let activeWindowIds: Set<String> = ["pty-other"]
         store.refreshWindowLiveness(activeWindowIds: activeWindowIds)
 
-        XCTAssertNil(store.workspaces.first!.itermWindowId)
+        XCTAssertTrue(store.workspaces.isEmpty, "Bubble with dead window should be removed")
     }
 
     func test_refresh_keeps_active_window_ids() {
@@ -1517,7 +1517,7 @@ final class WindowPollingBehaviorTests: XCTestCase {
 
         await store.pollWindowLiveness()
 
-        XCTAssertNil(store.workspaces.first!.itermWindowId)
+        XCTAssertTrue(store.workspaces.isEmpty, "Bubble with dead window should be removed")
     }
 
     func test_poll_windows_keeps_live_windows() async {

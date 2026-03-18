@@ -68,6 +68,18 @@ async def cmd_activate_window(connection: iterm2.Connection, args: dict) -> dict
 
 # --- Phase 2: Workspace Lifecycle ---
 
+def _get_as_window_ids() -> set:
+    """Get current AppleScript window IDs for iTerm2."""
+    import subprocess
+    result = subprocess.run(
+        ["osascript", "-e", 'tell application "iTerm2" to get id of every window'],
+        capture_output=True, text=True, timeout=5
+    )
+    if result.returncode != 0:
+        return set()
+    return set(int(x.strip()) for x in result.stdout.strip().split(",") if x.strip().isdigit())
+
+
 @command("create_window")
 async def cmd_create_window(connection: iterm2.Connection, args: dict) -> dict:
     """Create a new iTerm2 window, optionally with multiple tabs.
@@ -80,6 +92,9 @@ async def cmd_create_window(connection: iterm2.Connection, args: dict) -> dict:
     tabs_config = args.get("tabs", [{}])
     profile = args.get("profile")
 
+    # Snapshot AppleScript window IDs before creation
+    before_ids = _get_as_window_ids()
+
     # Create the window with the first tab
     first = tabs_config[0] if tabs_config else {}
     command_str = _build_command(first)
@@ -90,6 +105,13 @@ async def cmd_create_window(connection: iterm2.Connection, args: dict) -> dict:
     )
     if window is None:
         raise RuntimeError("Failed to create window")
+
+    # Discover the new AppleScript window ID
+    import asyncio
+    await asyncio.sleep(0.3)  # Brief delay for AppleScript to register
+    after_ids = _get_as_window_ids()
+    new_ids = after_ids - before_ids
+    as_window_id = new_ids.pop() if new_ids else None
 
     created_tabs = []
 
@@ -116,6 +138,7 @@ async def cmd_create_window(connection: iterm2.Connection, args: dict) -> dict:
 
     return {
         "window_id": window.window_id,
+        "as_window_id": as_window_id,
         "tabs": created_tabs,
     }
 
@@ -141,6 +164,59 @@ async def cmd_create_tab(connection: iterm2.Connection, args: dict) -> dict:
         await tab.async_set_title(args["name"])
 
     return {"tab_id": tab.tab_id, "window_id": window_id}
+
+
+@command("set_window_title")
+async def cmd_set_window_title(connection: iterm2.Connection, args: dict) -> dict:
+    """Set the title of all tabs in a window to propagate as the window title.
+
+    args:
+        window_id: target window
+        title: the title string
+    """
+    window_id = args["window_id"]
+    title = args["title"]
+    app = await iterm2.async_get_app(connection)
+    window = _find_window(app, window_id)
+    for tab in window.tabs:
+        await tab.async_set_title(title)
+    return {"window_id": window_id, "title": title}
+
+
+@command("minimize_window")
+async def cmd_minimize_window(connection: iterm2.Connection, args: dict) -> dict:
+    """Minimize (or restore) an iTerm2 window by AppleScript numeric ID.
+
+    args:
+        as_window_id: AppleScript numeric window ID (from create_window)
+        minimize: bool (true to minimize, false to restore)
+    """
+    import subprocess
+
+    as_id = args["as_window_id"]
+    minimize = args.get("minimize", True)
+    action = "true" if minimize else "false"
+
+    script = f'''
+        tell application "iTerm2"
+            repeat with w in windows
+                if id of w is {as_id} then
+                    set miniaturized of w to {action}
+                    return "ok"
+                end if
+            end repeat
+            error "No window with AppleScript ID {as_id}"
+        end tell
+    '''
+
+    result = subprocess.run(
+        ["osascript", "-e", script],
+        capture_output=True, text=True, timeout=5
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"AppleScript failed: {result.stderr.strip()}")
+
+    return {"as_window_id": as_id, "minimized": minimize}
 
 
 @command("close_window")

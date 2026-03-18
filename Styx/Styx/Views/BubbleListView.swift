@@ -12,16 +12,40 @@ struct BubbleListView: View {
         store.workspaces.filter(\.docked).sorted { $0.sortOrder < $1.sortOrder }
     }
 
+    private var allMinimized: Bool {
+        !dockedWorkspaces.isEmpty && dockedWorkspaces.allSatisfy(\.collapsed)
+    }
+
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
+            // Minimize All / Restore All toggle
+            if !dockedWorkspaces.isEmpty {
+                Button(action: {
+                    Task {
+                        if allMinimized { await store.restoreAll() } else { await store.minimizeAll() }
+                    }
+                }) {
+                    Image(systemName: allMinimized ? "macwindow.on.rectangle" : "macwindow.badge.minus")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.tertiary)
+                        .frame(width: 24, height: 16)
+                }
+                .buttonStyle(.plain)
+                .help(allMinimized ? "Restore All" : "Minimize All")
+                .padding(.top, 4)
+            }
+
             ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(spacing: 8) {
+                LazyVStack(spacing: 4) {
                     ForEach(dockedWorkspaces) { workspace in
                         BubbleView(
                             workspace: workspace,
                             state: store.bubbleState(for: workspace),
                             onTap: {
                                 Task { await store.activateWorkspace(workspace) }
+                            },
+                            onDoubleTap: {
+                                Task { await store.toggleMinimize(workspace) }
                             },
                             onDragChanged: { translation in
                                 onDragChanged?(workspace.id, translation)
@@ -31,14 +55,7 @@ struct BubbleListView: View {
                             }
                         )
                         .contextMenu {
-                            Button("Rename...") {
-                                renameText = workspace.name
-                                renamingWorkspaceId = workspace.id
-                            }
-                            Divider()
-                            Button("Delete Workspace") {
-                                Task { await store.deleteWorkspace(workspace) }
-                            }
+                            bubbleContextMenu(workspace: workspace)
                         }
                         .popover(isPresented: Binding(
                             get: { renamingWorkspaceId == workspace.id },
@@ -55,7 +72,7 @@ struct BubbleListView: View {
                         }
                     }
                 }
-                .padding(.vertical, 8)
+                .padding(.vertical, 4)
             }
 
             Divider().padding(.horizontal, 8)
@@ -66,10 +83,28 @@ struct BubbleListView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .padding(.bottom, 8)
+            .padding(.bottom, 4)
             .popover(isPresented: $showQuickAdd) {
                 QuickAddView(store: store, isPresented: $showQuickAdd)
             }
+
+            // Bottom padding — resize grip is handled by AppKit at the panel level
+            Spacer().frame(height: 12)
+        }
+    }
+
+    @ViewBuilder
+    private func bubbleContextMenu(workspace: Workspace) -> some View {
+        Button(workspace.collapsed ? "Restore Terminals" : "Minimize Terminals") {
+            Task { await store.toggleMinimize(workspace) }
+        }
+        Button("Rename Bubble...") {
+            renameText = workspace.name
+            renamingWorkspaceId = workspace.id
+        }
+        Divider()
+        Button("Delete Bubble") {
+            Task { await store.deleteWorkspace(workspace) }
         }
     }
 }
@@ -83,7 +118,7 @@ struct RenamePopover: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text("Rename Workspace").font(.headline)
+            Text("Rename Bubble").font(.headline)
             TextField("Name", text: $name)
                 .textFieldStyle(.roundedBorder)
                 .onSubmit(onConfirm)

@@ -66,6 +66,9 @@ struct MenuBarContent: View {
 
             Divider()
             SettingsLink { Text("Settings...") }
+            Text("Styx v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"))")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
             Button("Quit Styx") {
                 Task {
                     await appDelegate.store.shutdown()
@@ -191,12 +194,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard !isRunningTests else { return }
 
+        StateLedger.shared.record(
+            component: "Startup", operation: "applicationDidFinishLaunching",
+            before: ["isRunningTests": AnyCodable(false)],
+            after: ["activationPolicy": AnyCodable("accessory")]
+        )
+
         NSApp.setActivationPolicy(.accessory)
         AccessibilityChecker.promptIfNeeded()
 
         Task { @MainActor in
             let bridge = ITerm2Bridge()
+            store.loadConfig()
             await launch(bridge: bridge)
+
+            // Wire current state provider for ledger dumps
+            StateLedger.shared.currentStateProvider = { [weak self] in
+                guard let self else { return [:] }
+                return [
+                    "buildVersion": AnyCodable(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown"),
+                    "appVersion": AnyCodable(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"),
+                    "workspaceCount": AnyCodable(self.store.workspaces.count),
+                    "sidebarVisible": AnyCodable(self.store.sidebarVisible),
+                    "bridgeConnected": AnyCodable(self.store.bridgeConnected),
+                    "iTerm2Reachable": AnyCodable(self.store.iTerm2Reachable),
+                    "focusedWorkspaceId": AnyCodable(self.store.focusedWorkspaceId ?? "none"),
+                    "dockedCount": AnyCodable(self.store.workspaces.filter(\.docked).count),
+                    "minimizedCount": AnyCodable(self.store.workspaces.filter(\.collapsed).count),
+                    "sidebarFrame": AnyCodable(self.sidebarController.panelFrame.map {
+                        ["x": $0.origin.x, "y": $0.origin.y,
+                         "width": $0.size.width, "height": $0.size.height]
+                    } as Any? ?? "nil"),
+                ]
+            }
+
+            StateLedger.shared.record(
+                component: "Startup", operation: "launchComplete",
+                before: [:],
+                after: [
+                    "bridgeConnected": AnyCodable(self.store.bridgeConnected),
+                    "sidebarVisible": AnyCodable(self.store.sidebarVisible),
+                    "workspaceCount": AnyCodable(self.store.workspaces.count),
+                ]
+            )
         }
     }
 
