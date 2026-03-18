@@ -1758,6 +1758,39 @@ final class SettingsSaveBehaviorTests: XCTestCase {
     }
 }
 
+// MARK: - Launch Wiring Completeness
+
+@MainActor
+final class LaunchWiringCompletenessTests: XCTestCase {
+
+    func test_launch_wires_redock_callback_on_floating_manager() async {
+        let delegate = AppDelegate()
+        let fake = FakeBridge()
+        await delegate.launch(bridge: fake)
+
+        XCTAssertNotNil(delegate.floatingManager.onRedockCheck)
+    }
+
+    func test_launch_starts_polling_task() async {
+        let delegate = AppDelegate()
+        let fake = FakeBridge()
+        await fake.setCallResult("list_windows", value: [[String: Any]]())
+        await delegate.launch(bridge: fake)
+
+        XCTAssertTrue(delegate.isPollingActive)
+    }
+
+    func test_shutdown_cancels_polling() async {
+        let delegate = AppDelegate()
+        let fake = FakeBridge()
+        await fake.setCallResult("list_windows", value: [[String: Any]]())
+        await delegate.launch(bridge: fake)
+        await delegate.shutdownForTest()
+
+        XCTAssertFalse(delegate.isPollingActive)
+    }
+}
+
 // MARK: - AnyCodable Edge Cases
 
 final class AnyCodableEdgeCaseTests: XCTestCase {

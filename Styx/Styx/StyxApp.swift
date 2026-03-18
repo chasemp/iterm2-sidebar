@@ -75,6 +75,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var floatingManager = FloatingBubbleManager(store: store)
     let hotkeyRegistrar = HotkeyRegistrar()
     private var focusTask: Task<Void, Never>?
+    private var pollTask: Task<Void, Never>?
+
+    var isPollingActive: Bool { pollTask != nil && !pollTask!.isCancelled }
 
     func toggleSidebar() {
         sidebarController.toggle()
@@ -116,8 +119,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             sidebarController.show()
         }
 
+        // Wire redock callback
+        floatingManager.onRedockCheck = { [weak self] id, frame in
+            self?.handleRedockCheck(workspaceId: id, panelFrame: frame)
+        }
+
         floatingManager.refresh()
         registerHotkeys()
+        startPolling()
 
         // Subscribe to focus events if bridge supports it
         if let iterm2Bridge = bridge as? ITerm2Bridge {
@@ -125,6 +134,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 for await event in iterm2Bridge.focusEvents {
                     await MainActor.run { self?.store.handleFocusEvent(event) }
                 }
+            }
+        }
+    }
+
+    func shutdownForTest() async {
+        pollTask?.cancel()
+        pollTask = nil
+        focusTask?.cancel()
+        focusTask = nil
+        await store.shutdown()
+    }
+
+    private func startPolling() {
+        pollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(10))
+                guard let self else { break }
+                await self.store.pollWindowLiveness()
             }
         }
     }
@@ -139,6 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        pollTask?.cancel()
         focusTask?.cancel()
         floatingManager.savePositions()
         store.saveConfig()
