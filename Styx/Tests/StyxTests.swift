@@ -2,8 +2,6 @@ import XCTest
 import SwiftUI
 @testable import Styx
 
-// MARK: - Test Data Factories
-
 func makeWorkspace(
     name: String = "Test",
     color: String = "#4A90D9",
@@ -33,8 +31,6 @@ func makeTab(
 ) -> WorkspaceTab {
     WorkspaceTab(name: name, dir: dir, cmd: cmd)
 }
-
-// MARK: - CodablePoint
 
 final class CodablePointTests: XCTestCase {
 
@@ -67,8 +63,6 @@ final class CodablePointTests: XCTestCase {
         XCTAssertNotEqual(CodablePoint(x: 1, y: 2), CodablePoint(x: 3, y: 4))
     }
 }
-
-// MARK: - Workspace
 
 final class WorkspaceTests: XCTestCase {
 
@@ -122,8 +116,6 @@ final class WorkspaceTests: XCTestCase {
     }
 }
 
-// MARK: - WorkspaceTab
-
 final class WorkspaceTabTests: XCTestCase {
 
     func test_tab_id_is_name() {
@@ -140,8 +132,6 @@ final class WorkspaceTabTests: XCTestCase {
         XCTAssertEqual(decoded.cmd, "npm start")
     }
 }
-
-// MARK: - StyxConfig
 
 final class StyxConfigTests: XCTestCase {
 
@@ -171,8 +161,6 @@ final class StyxConfigTests: XCTestCase {
     }
 }
 
-// MARK: - BubbleState
-
 final class BubbleStateTests: XCTestCase {
 
     func test_focused_state_has_green_ring() {
@@ -192,8 +180,6 @@ final class BubbleStateTests: XCTestCase {
         XCTAssertGreaterThan(BubbleState.active.opacity, BubbleState.dormant.opacity)
     }
 }
-
-// MARK: - DockZone
 
 final class DockZoneTests: XCTestCase {
 
@@ -219,8 +205,6 @@ final class DockZoneTests: XCTestCase {
         XCTAssertLessThanOrEqual(index, 3)
     }
 }
-
-// MARK: - BridgeProtocol
 
 final class BridgeProtocolTests: XCTestCase {
 
@@ -279,8 +263,6 @@ final class BridgeProtocolTests: XCTestCase {
     }
 }
 
-// MARK: - WorkspaceTemplate
-
 final class WorkspaceTemplateTests: XCTestCase {
 
     func test_templates_are_available() {
@@ -298,8 +280,6 @@ final class WorkspaceTemplateTests: XCTestCase {
     }
 }
 
-// MARK: - WorkspaceStore
-
 @MainActor
 final class WorkspaceStoreTests: XCTestCase {
 
@@ -308,8 +288,6 @@ final class WorkspaceStoreTests: XCTestCase {
         store.config.workspaces = workspaces
         return store
     }
-
-    // --- Bubble State Derivation ---
 
     func test_focused_workspace_returns_focused_state() {
         let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
@@ -333,8 +311,6 @@ final class WorkspaceStoreTests: XCTestCase {
 
         XCTAssertEqual(store.bubbleState(for: ws), .dormant)
     }
-
-    // --- Dock / Undock ---
 
     func test_undock_sets_docked_false_and_saves_position() {
         var ws = makeWorkspace(name: "A", docked: true)
@@ -371,8 +347,6 @@ final class WorkspaceStoreTests: XCTestCase {
         XCTAssertTrue(store.workspaces.allSatisfy { $0.floatingPosition == nil })
     }
 
-    // --- Workspace Cycling ---
-
     func test_cycle_forward_wraps_around() {
         let a = makeWorkspace(name: "A", sortOrder: 0)
         let b = makeWorkspace(name: "B", sortOrder: 1)
@@ -403,8 +377,6 @@ final class WorkspaceStoreTests: XCTestCase {
         XCTAssertNil(store.workspaceIdByIndex(5))
     }
 
-    // --- Sidebar Visibility ---
-
     func test_sidebar_visible_mirrors_config() {
         let store = makeStore()
         store.config.sidebar.visible = true
@@ -413,8 +385,6 @@ final class WorkspaceStoreTests: XCTestCase {
         store.sidebarVisible = false
         XCTAssertFalse(store.config.sidebar.visible)
     }
-
-    // --- Persistence ---
 
     func test_save_and_load_config_roundtrips() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -442,8 +412,6 @@ final class WorkspaceStoreTests: XCTestCase {
         XCTAssertEqual(store.config.version, 1)
     }
 }
-
-// MARK: - HotkeyParser
 
 final class HotkeyParserTests: XCTestCase {
 
@@ -484,8 +452,6 @@ final class HotkeyParserTests: XCTestCase {
         XCTAssertNil(HotkeyParser.parse("Cmd+"))
     }
 }
-
-// MARK: - BubbleDragStateMachine
 
 final class BubbleDragStateMachineTests: XCTestCase {
 
@@ -563,8 +529,6 @@ final class BubbleDragStateMachineTests: XCTestCase {
     }
 }
 
-// MARK: - HexColor Parsing
-
 final class HexColorTests: XCTestCase {
 
     func test_parses_six_digit_hex_with_hash() {
@@ -608,8 +572,6 @@ final class HexColorTests: XCTestCase {
     }
 }
 
-// MARK: - DockZone Edge Cases
-
 final class DockZoneEdgeCaseTests: XCTestCase {
 
     func test_expanded_frame_adds_margin() {
@@ -645,8 +607,6 @@ final class DockZoneEdgeCaseTests: XCTestCase {
         XCTAssertFalse(zone.contains(CGPoint(x: 73, y: 500)))
     }
 }
-
-// MARK: - HotkeyParser Edge Cases
 
 final class HotkeyParserEdgeCaseTests: XCTestCase {
 
@@ -691,8 +651,6 @@ final class HotkeyParserEdgeCaseTests: XCTestCase {
         XCTAssertGreaterThan(carbon, 0)
     }
 }
-
-// MARK: - WorkspaceStore Edge Cases
 
 @MainActor
 final class WorkspaceStoreEdgeCaseTests: XCTestCase {
@@ -777,7 +735,6 @@ final class WorkspaceStoreEdgeCaseTests: XCTestCase {
         let ws = makeWorkspace(name: "No Window", itermWindowId: nil)
         let store = WorkspaceStore()
         store.config.workspaces = [ws]
-        // Should not crash or throw — just silently return
         await store.activateWorkspace(ws)
     }
 
@@ -789,8 +746,6 @@ final class WorkspaceStoreEdgeCaseTests: XCTestCase {
         XCTAssertTrue(store.workspaces.isEmpty)
     }
 }
-
-// MARK: - FocusEvent Edge Cases
 
 final class FocusEventEdgeCaseTests: XCTestCase {
 
@@ -831,8 +786,6 @@ final class FocusEventEdgeCaseTests: XCTestCase {
         XCTAssertNil(FocusEvent(from: response))
     }
 }
-
-// MARK: - WorkspaceStore with FakeBridge
 
 actor FakeBridge: BridgeService {
     var startCalled = false
@@ -944,14 +897,12 @@ final class WorkspaceStoreBridgeTests: XCTestCase {
     }
 }
 
-// MARK: - Sidebar Panel Behavior
-
 @MainActor
 final class SidebarBehaviorTests: XCTestCase {
 
     func test_showing_sidebar_makes_panel_visible() {
         let store = WorkspaceStore()
-        let controller = SidebarPanelController(store: store)
+        let controller = SidebarPanelController(store: store, headless: true)
 
         controller.show()
 
@@ -961,7 +912,7 @@ final class SidebarBehaviorTests: XCTestCase {
 
     func test_hiding_sidebar_removes_panel() {
         let store = WorkspaceStore()
-        let controller = SidebarPanelController(store: store)
+        let controller = SidebarPanelController(store: store, headless: true)
 
         controller.show()
         controller.hide()
@@ -971,7 +922,7 @@ final class SidebarBehaviorTests: XCTestCase {
 
     func test_toggle_twice_returns_to_original_state() {
         let store = WorkspaceStore()
-        let controller = SidebarPanelController(store: store)
+        let controller = SidebarPanelController(store: store, headless: true)
         let initialVisibility = store.sidebarVisible
 
         controller.toggle()
@@ -987,7 +938,7 @@ final class SidebarBehaviorTests: XCTestCase {
             makeWorkspace(name: "B", docked: true),
             makeWorkspace(name: "C", docked: false),
         ]
-        let controller = SidebarPanelController(store: store)
+        let controller = SidebarPanelController(store: store, headless: true)
         controller.show()
 
         let frameBefore = controller.panelFrame
@@ -997,19 +948,16 @@ final class SidebarBehaviorTests: XCTestCase {
 
         XCTAssertNotNil(frameBefore)
         XCTAssertNotNil(frameAfter)
-        // More docked bubbles → taller panel
         XCTAssertGreaterThan(frameAfter!.height, frameBefore!.height)
     }
 }
-
-// MARK: - Floating Bubble Manager Behavior
 
 @MainActor
 final class FloatingBubbleBehaviorTests: XCTestCase {
 
     func test_show_floating_bubble_creates_panel() {
         let store = WorkspaceStore()
-        let manager = FloatingBubbleManager(store: store)
+        let manager = FloatingBubbleManager(store: store, headless: true)
         let ws = makeWorkspace(name: "Floater", docked: false, floatingPosition: CodablePoint(x: 100, y: 100))
 
         manager.showFloatingBubble(for: ws)
@@ -1019,7 +967,7 @@ final class FloatingBubbleBehaviorTests: XCTestCase {
 
     func test_hide_floating_bubble_removes_panel() {
         let store = WorkspaceStore()
-        let manager = FloatingBubbleManager(store: store)
+        let manager = FloatingBubbleManager(store: store, headless: true)
         let ws = makeWorkspace(name: "Floater", docked: false)
 
         manager.showFloatingBubble(for: ws)
@@ -1033,7 +981,7 @@ final class FloatingBubbleBehaviorTests: XCTestCase {
         let a = makeWorkspace(name: "A", docked: false)
         let b = makeWorkspace(name: "B", docked: false)
         store.config.workspaces = [a, b]
-        let manager = FloatingBubbleManager(store: store)
+        let manager = FloatingBubbleManager(store: store, headless: true)
         manager.showFloatingBubble(for: a)
         manager.showFloatingBubble(for: b)
 
@@ -1049,7 +997,7 @@ final class FloatingBubbleBehaviorTests: XCTestCase {
         let a = makeWorkspace(name: "A", docked: false)
         let b = makeWorkspace(name: "B", docked: true)
         store.config.workspaces = [a, b]
-        let manager = FloatingBubbleManager(store: store)
+        let manager = FloatingBubbleManager(store: store, headless: true)
 
         manager.refresh()
 
@@ -1061,10 +1009,9 @@ final class FloatingBubbleBehaviorTests: XCTestCase {
         let store = WorkspaceStore()
         var ws = makeWorkspace(name: "A", docked: false)
         store.config.workspaces = [ws]
-        let manager = FloatingBubbleManager(store: store)
+        let manager = FloatingBubbleManager(store: store, headless: true)
         manager.showFloatingBubble(for: ws)
 
-        // Redock the workspace
         store.redockWorkspace(ws.id, atSortOrder: 0)
         manager.refresh()
 
@@ -1074,7 +1021,7 @@ final class FloatingBubbleBehaviorTests: XCTestCase {
     func test_duplicate_show_does_not_create_second_panel() {
         let store = WorkspaceStore()
         let ws = makeWorkspace(name: "A", docked: false)
-        let manager = FloatingBubbleManager(store: store)
+        let manager = FloatingBubbleManager(store: store, headless: true)
 
         manager.showFloatingBubble(for: ws)
         manager.showFloatingBubble(for: ws) // second call
@@ -1083,12 +1030,9 @@ final class FloatingBubbleBehaviorTests: XCTestCase {
     }
 }
 
-// MARK: - ITerm2Bridge Behavior
-
 final class ITerm2BridgeBehaviorTests: XCTestCase {
 
     func test_bridge_conforms_to_service_protocol() {
-        // ITerm2Bridge must conform to BridgeService
         let bridge: any BridgeService = ITerm2Bridge()
         XCTAssertNotNil(bridge)
     }
@@ -1104,35 +1048,33 @@ final class ITerm2BridgeBehaviorTests: XCTestCase {
     }
 }
 
-// MARK: - App Wiring Behavior
-
 @MainActor
 final class AppWiringTests: XCTestCase {
 
     func test_app_delegate_creates_store() {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         XCTAssertNotNil(delegate.store)
     }
 
     func test_app_delegate_creates_sidebar_controller() {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         XCTAssertNotNil(delegate.sidebarController)
     }
 
     func test_app_delegate_creates_floating_manager() {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         XCTAssertNotNil(delegate.floatingManager)
     }
 
     func test_toggle_sidebar_flips_visibility() {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let initial = delegate.store.sidebarVisible
         delegate.toggleSidebar()
         XCTAssertNotEqual(delegate.store.sidebarVisible, initial)
     }
 
     func test_recall_all_redocks_and_refreshes() {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let a = makeWorkspace(name: "A", docked: false)
         delegate.store.config.workspaces = [a]
         delegate.floatingManager.showFloatingBubble(for: a)
@@ -1144,13 +1086,11 @@ final class AppWiringTests: XCTestCase {
     }
 }
 
-// MARK: - App Launch Behavior
-
 @MainActor
 final class AppLaunchBehaviorTests: XCTestCase {
 
     func test_launch_with_visible_sidebar_config_shows_sidebar() async {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         delegate.store.config.sidebar.visible = true
         let fake = FakeBridge()
         await delegate.launch(bridge: fake)
@@ -1160,7 +1100,7 @@ final class AppLaunchBehaviorTests: XCTestCase {
     }
 
     func test_launch_with_hidden_sidebar_config_does_not_show_sidebar() async {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         delegate.store.config.sidebar.visible = false
         let fake = FakeBridge()
         await delegate.launch(bridge: fake)
@@ -1169,7 +1109,7 @@ final class AppLaunchBehaviorTests: XCTestCase {
     }
 
     func test_launch_connects_bridge() async {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let fake = FakeBridge()
         await delegate.launch(bridge: fake)
 
@@ -1179,7 +1119,7 @@ final class AppLaunchBehaviorTests: XCTestCase {
     }
 
     func test_launch_restores_floating_bubbles() async {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let ws = makeWorkspace(name: "Float", docked: false, floatingPosition: CodablePoint(x: 50, y: 50))
         delegate.store.config.workspaces = [ws]
         let fake = FakeBridge()
@@ -1189,25 +1129,19 @@ final class AppLaunchBehaviorTests: XCTestCase {
     }
 }
 
-// MARK: - Sidebar Hosts BubbleListView
-
 @MainActor
 final class SidebarContentBehaviorTests: XCTestCase {
 
     func test_sidebar_panel_has_content_view_after_show() {
         let store = WorkspaceStore()
         store.config.workspaces = [makeWorkspace(name: "A", docked: true)]
-        let controller = SidebarPanelController(store: store)
+        let controller = SidebarPanelController(store: store, headless: true)
         controller.show()
 
-        // The panel should have a non-empty content view
         XCTAssertNotNil(controller.panelFrame)
-        // Panel height should account for at least one bubble
         XCTAssertGreaterThan(controller.panelFrame!.height, 50)
     }
 }
-
-// MARK: - Floating Bubble Redock on MouseUp
 
 @MainActor
 final class FloatingBubbleRedockBehaviorTests: XCTestCase {
@@ -1216,18 +1150,15 @@ final class FloatingBubbleRedockBehaviorTests: XCTestCase {
         let store = WorkspaceStore()
         let ws = makeWorkspace(name: "A", docked: false)
         store.config.workspaces = [ws]
-        let manager = FloatingBubbleManager(store: store)
+        let manager = FloatingBubbleManager(store: store, headless: true)
 
         var redockCalled = false
         manager.onRedockCheck = { _, _ in redockCalled = true }
         manager.showFloatingBubble(for: ws)
 
-        // Simulate mouseUp on the panel — the panel should call onRedockCheck
         XCTAssertTrue(manager.hasPanel(for: ws.id))
     }
 }
-
-// MARK: - Focus Tracking Behavior
 
 @MainActor
 final class FocusTrackingBehaviorTests: XCTestCase {
@@ -1265,8 +1196,6 @@ final class FocusTrackingBehaviorTests: XCTestCase {
     }
 }
 
-// MARK: - Hotkey Registration Behavior
-
 @MainActor
 final class HotkeyRegistrationBehaviorTests: XCTestCase {
 
@@ -1294,36 +1223,28 @@ final class HotkeyRegistrationBehaviorTests: XCTestCase {
     }
 }
 
-// MARK: - MenuBar Content Behavior
-
 @MainActor
 final class MenuBarContentBehaviorTests: XCTestCase {
 
     func test_menu_bar_view_can_be_created() {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let view = MenuBarContent(appDelegate: delegate)
         XCTAssertNotNil(view)
     }
 }
 
-// MARK: - BubbleView Behavior
-
 final class BubbleViewBehaviorTests: XCTestCase {
 
     func test_bubble_view_can_be_created() {
-        // BubbleView must be instantiable with a workspace and state
         let ws = makeWorkspace(name: "Test")
         let _ = BubbleView(workspace: ws, state: .active, onTap: {})
     }
 
     func test_color_from_hex_creates_valid_color() {
-        // Color(hex:) is the bridge between HexColor and SwiftUI
         let color = Color(hex: "#FF0000")
         XCTAssertNotNil(color)
     }
 }
-
-// MARK: - Drag-to-Undock Composed Behavior
 
 @MainActor
 final class DragUndockBehaviorTests: XCTestCase {
@@ -1333,9 +1254,9 @@ final class DragUndockBehaviorTests: XCTestCase {
         let ws = makeWorkspace(name: "Dragged", docked: true)
         store.config.workspaces = [ws]
 
-        let sidebarController = SidebarPanelController(store: store)
+        let sidebarController = SidebarPanelController(store: store, headless: true)
         sidebarController.show()
-        let floatingManager = FloatingBubbleManager(store: store)
+        let floatingManager = FloatingBubbleManager(store: store, headless: true)
 
         var machine = BubbleDragStateMachine()
         machine.dragChanged(workspaceId: ws.id, translation: CGSize(width: 10, height: 0))
@@ -1346,7 +1267,6 @@ final class DragUndockBehaviorTests: XCTestCase {
             return
         }
 
-        // Simulate drop outside sidebar
         let dropPoint = CGPoint(x: 300, y: 400)
         var dockZone = DockZone()
         if let sidebarFrame = sidebarController.panelFrame {
@@ -1369,7 +1289,7 @@ final class DragUndockBehaviorTests: XCTestCase {
         let ws = makeWorkspace(name: "Kept", docked: true)
         store.config.workspaces = [ws]
 
-        let sidebarController = SidebarPanelController(store: store)
+        let sidebarController = SidebarPanelController(store: store, headless: true)
         sidebarController.show()
 
         var machine = BubbleDragStateMachine()
@@ -1378,21 +1298,17 @@ final class DragUndockBehaviorTests: XCTestCase {
         let draggedId = machine.dragEnded()
 
         XCTAssertNotNil(draggedId)
-        // Drop point inside sidebar — stays docked
         let dropPoint = CGPoint(x: 36, y: 500)
         var dockZone = DockZone()
         if let sidebarFrame = sidebarController.panelFrame {
             dockZone.sidebarFrame = sidebarFrame
             if dockZone.contains(dropPoint) {
-                // No undock — workspace stays docked
             }
         }
 
         XCTAssertTrue(store.workspaces.first!.docked)
     }
 }
-
-// MARK: - Drag-to-Redock Composed Behavior
 
 @MainActor
 final class DragRedockBehaviorTests: XCTestCase {
@@ -1402,12 +1318,11 @@ final class DragRedockBehaviorTests: XCTestCase {
         let ws = makeWorkspace(name: "Floating", docked: false, floatingPosition: CodablePoint(x: 200, y: 300))
         store.config.workspaces = [ws]
 
-        let sidebarController = SidebarPanelController(store: store)
+        let sidebarController = SidebarPanelController(store: store, headless: true)
         sidebarController.show()
-        let floatingManager = FloatingBubbleManager(store: store)
+        let floatingManager = FloatingBubbleManager(store: store, headless: true)
         floatingManager.showFloatingBubble(for: ws)
 
-        // Simulate dropping the floating bubble over the sidebar
         var dockZone = DockZone()
         if let sidebarFrame = sidebarController.panelFrame {
             dockZone.sidebarFrame = sidebarFrame
@@ -1428,8 +1343,6 @@ final class DragRedockBehaviorTests: XCTestCase {
         XCTAssertFalse(floatingManager.hasPanel(for: ws.id))
     }
 }
-
-// MARK: - BubbleListView Behavior
 
 @MainActor
 final class BubbleListViewBehaviorTests: XCTestCase {
@@ -1455,8 +1368,6 @@ final class BubbleListViewBehaviorTests: XCTestCase {
         XCTAssertEqual(docked[1].name, "Docked1")
     }
 }
-
-// MARK: - QuickAddView Behavior
 
 @MainActor
 final class QuickAddViewBehaviorTests: XCTestCase {
@@ -1488,8 +1399,6 @@ final class QuickAddViewBehaviorTests: XCTestCase {
     }
 }
 
-// MARK: - SettingsView Behavior
-
 @MainActor
 final class SettingsViewBehaviorTests: XCTestCase {
 
@@ -1512,13 +1421,11 @@ final class SettingsViewBehaviorTests: XCTestCase {
     }
 }
 
-// MARK: - App Drag Wiring Behavior
-
 @MainActor
 final class AppDragWiringTests: XCTestCase {
 
     func test_handle_drag_undock_creates_floating_panel() {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let ws = makeWorkspace(name: "Drag", docked: true)
         delegate.store.config.workspaces = [ws]
         delegate.sidebarController.show()
@@ -1530,7 +1437,7 @@ final class AppDragWiringTests: XCTestCase {
     }
 
     func test_handle_redock_check_redocks_when_over_sidebar() {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let ws = makeWorkspace(name: "Float", docked: false)
         delegate.store.config.workspaces = [ws]
         delegate.sidebarController.show()
@@ -1554,7 +1461,7 @@ final class AppDragWiringTests: XCTestCase {
     }
 
     func test_handle_redock_check_ignores_when_not_over_sidebar() {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let ws = makeWorkspace(name: "Float", docked: false)
         delegate.store.config.workspaces = [ws]
         delegate.sidebarController.show()
@@ -1567,8 +1474,6 @@ final class AppDragWiringTests: XCTestCase {
         XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
     }
 }
-
-// MARK: - Window Liveness Behavior
 
 @MainActor
 final class WindowLivenessBehaviorTests: XCTestCase {
@@ -1596,8 +1501,6 @@ final class WindowLivenessBehaviorTests: XCTestCase {
     }
 }
 
-// MARK: - Window Polling Behavior
-
 @MainActor
 final class WindowPollingBehaviorTests: XCTestCase {
 
@@ -1607,7 +1510,6 @@ final class WindowPollingBehaviorTests: XCTestCase {
         store.config.workspaces = [ws]
 
         let fake = FakeBridge()
-        // Bridge returns list_windows with only "pty-other"
         await fake.setCallResult("list_windows", value: [
             ["window_id": "pty-other", "tabs": []] as [String: Any]
         ])
@@ -1642,18 +1544,14 @@ final class WindowPollingBehaviorTests: XCTestCase {
         let fake = FakeBridge()
         await fake.setShouldThrow(true)
         await store.connectBridge(fake)
-        // Reset throw for start, set for poll
         await fake.setShouldThrow(false)
         await fake.setShouldThrow(true)
 
         await store.pollWindowLiveness()
 
-        // Should not crash, window ID unchanged
         XCTAssertEqual(store.workspaces.first!.itermWindowId, "pty-1")
     }
 }
-
-// MARK: - Floating Panel Content Behavior
 
 @MainActor
 final class FloatingPanelContentBehaviorTests: XCTestCase {
@@ -1662,17 +1560,14 @@ final class FloatingPanelContentBehaviorTests: XCTestCase {
         let store = WorkspaceStore()
         let ws = makeWorkspace(name: "Content", color: "#FF0000", icon: "terminal", docked: false)
         store.config.workspaces = [ws]
-        let manager = FloatingBubbleManager(store: store)
+        let manager = FloatingBubbleManager(store: store, headless: true)
 
         manager.showFloatingBubble(for: ws)
 
-        // Panel should have a content view (not empty)
         XCTAssertTrue(manager.hasPanel(for: ws.id))
         XCTAssertNotNil(manager.panelContentView(for: ws.id))
     }
 }
-
-// MARK: - Floating Panel Redock Wiring
 
 @MainActor
 final class FloatingPanelRedockWiringTests: XCTestCase {
@@ -1681,7 +1576,7 @@ final class FloatingPanelRedockWiringTests: XCTestCase {
         let store = WorkspaceStore()
         let ws = makeWorkspace(name: "A", docked: false)
         store.config.workspaces = [ws]
-        let manager = FloatingBubbleManager(store: store)
+        let manager = FloatingBubbleManager(store: store, headless: true)
 
         var receivedWorkspaceId: String?
         var receivedFrame: NSRect?
@@ -1692,7 +1587,6 @@ final class FloatingPanelRedockWiringTests: XCTestCase {
 
         manager.showFloatingBubble(for: ws)
 
-        // Simulate mouseUp on the panel
         manager.simulateMouseUp(for: ws.id)
 
         XCTAssertEqual(receivedWorkspaceId, ws.id)
@@ -1700,13 +1594,11 @@ final class FloatingPanelRedockWiringTests: XCTestCase {
     }
 }
 
-// MARK: - Sidebar Drag Callback Wiring
-
 @MainActor
 final class SidebarDragCallbackTests: XCTestCase {
 
     func test_app_delegate_wires_drag_undock_on_launch() async {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let ws = makeWorkspace(name: "Drag", docked: true)
         delegate.store.config.workspaces = [ws]
         delegate.store.config.sidebar.visible = true
@@ -1714,15 +1606,12 @@ final class SidebarDragCallbackTests: XCTestCase {
         let fake = FakeBridge()
         await delegate.launch(bridge: fake)
 
-        // Simulate a completed drag that should trigger undock
         delegate.handleDragUndock(workspaceId: ws.id, screenPoint: CGPoint(x: 300, y: 300))
 
         XCTAssertFalse(delegate.store.workspaces.first!.docked)
         XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
     }
 }
-
-// MARK: - Settings Save Behavior
 
 @MainActor
 final class SettingsSaveBehaviorTests: XCTestCase {
@@ -1758,13 +1647,11 @@ final class SettingsSaveBehaviorTests: XCTestCase {
     }
 }
 
-// MARK: - Launch Wiring Completeness
-
 @MainActor
 final class LaunchWiringCompletenessTests: XCTestCase {
 
     func test_launch_wires_redock_callback_on_floating_manager() async {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let fake = FakeBridge()
         await delegate.launch(bridge: fake)
 
@@ -1772,7 +1659,7 @@ final class LaunchWiringCompletenessTests: XCTestCase {
     }
 
     func test_launch_starts_polling_task() async {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let fake = FakeBridge()
         await fake.setCallResult("list_windows", value: [[String: Any]]())
         await delegate.launch(bridge: fake)
@@ -1781,7 +1668,7 @@ final class LaunchWiringCompletenessTests: XCTestCase {
     }
 
     func test_shutdown_cancels_polling() async {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let fake = FakeBridge()
         await fake.setCallResult("list_windows", value: [[String: Any]]())
         await delegate.launch(bridge: fake)
@@ -1791,13 +1678,11 @@ final class LaunchWiringCompletenessTests: XCTestCase {
     }
 }
 
-// MARK: - Sidebar Drag Flow End-to-End
-
 @MainActor
 final class SidebarDragFlowTests: XCTestCase {
 
     func test_full_undock_flow_via_app_delegate() async {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let ws = makeWorkspace(name: "Undock", docked: true)
         delegate.store.config.workspaces = [ws]
         delegate.store.config.sidebar.visible = true
@@ -1806,7 +1691,6 @@ final class SidebarDragFlowTests: XCTestCase {
         await fake.setCallResult("list_windows", value: [[String: Any]]())
         await delegate.launch(bridge: fake)
 
-        // Step 1: Drag state machine transitions to active
         var machine = BubbleDragStateMachine()
         machine.dragChanged(workspaceId: ws.id, translation: CGSize(width: 10, height: 0))
         machine.dragChanged(workspaceId: ws.id, translation: CGSize(width: 25, height: 0))
@@ -1815,21 +1699,18 @@ final class SidebarDragFlowTests: XCTestCase {
             return
         }
 
-        // Step 2: Drop outside sidebar triggers undock
         delegate.handleDragUndock(workspaceId: draggedId, screenPoint: CGPoint(x: 300, y: 400))
 
-        // Verify end state
         XCTAssertFalse(delegate.store.workspaces.first!.docked)
         XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
 
-        // Step 3: Recall all brings it back
         delegate.recallAll()
         XCTAssertTrue(delegate.store.workspaces.first!.docked)
         XCTAssertFalse(delegate.floatingManager.hasPanel(for: ws.id))
     }
 
     func test_full_redock_flow_via_floating_panel() async {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         let ws = makeWorkspace(name: "Redock", docked: false, floatingPosition: CodablePoint(x: 200, y: 200))
         delegate.store.config.workspaces = [ws]
         delegate.store.config.sidebar.visible = true
@@ -1838,10 +1719,8 @@ final class SidebarDragFlowTests: XCTestCase {
         await fake.setCallResult("list_windows", value: [[String: Any]]())
         await delegate.launch(bridge: fake)
 
-        // Floating bubble should exist
         XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
 
-        // Simulate mouseUp over sidebar
         guard let sidebarFrame = delegate.sidebarController.panelFrame else {
             XCTFail("Sidebar should have a frame")
             return
@@ -1854,20 +1733,17 @@ final class SidebarDragFlowTests: XCTestCase {
         )
         delegate.handleRedockCheck(workspaceId: ws.id, panelFrame: overSidebar)
 
-        // Verify redocked
         XCTAssertTrue(delegate.store.workspaces.first!.docked)
         XCTAssertFalse(delegate.floatingManager.hasPanel(for: ws.id))
     }
 }
-
-// MARK: - Sidebar Drag Callback Wiring
 
 @MainActor
 final class SidebarDragCallbackWiringTests: XCTestCase {
 
     func test_sidebar_controller_accepts_drag_callbacks() {
         let store = WorkspaceStore()
-        let controller = SidebarPanelController(store: store)
+        let controller = SidebarPanelController(store: store, headless: true)
 
         var receivedId: String?
         var receivedTranslation: CGSize?
@@ -1881,7 +1757,7 @@ final class SidebarDragCallbackWiringTests: XCTestCase {
 
     func test_sidebar_controller_accepts_drag_ended_callback() {
         let store = WorkspaceStore()
-        let controller = SidebarPanelController(store: store)
+        let controller = SidebarPanelController(store: store, headless: true)
 
         var endedId: String?
         controller.onDragEnded = { id in endedId = id }
@@ -1890,7 +1766,7 @@ final class SidebarDragCallbackWiringTests: XCTestCase {
     }
 
     func test_launch_wires_drag_callbacks_to_sidebar() async {
-        let delegate = AppDelegate()
+        let delegate = AppDelegate(); do { delegate.headless = true }
         delegate.store.config.sidebar.visible = true
         let fake = FakeBridge()
         await fake.setCallResult("list_windows", value: [[String: Any]]())
@@ -1901,12 +1777,9 @@ final class SidebarDragCallbackWiringTests: XCTestCase {
     }
 }
 
-// MARK: - Bridge Script Bundling
-
 final class BridgeScriptBundlingTests: XCTestCase {
 
     func test_bridge_script_exists_at_development_path() {
-        // The bridge_daemon.py should be findable relative to the project
         let projectDir = URL(fileURLWithPath: #file)
             .deletingLastPathComponent() // Tests/
             .deletingLastPathComponent() // Styx/
@@ -1934,8 +1807,6 @@ final class BridgeScriptBundlingTests: XCTestCase {
     }
 }
 
-// MARK: - Save Positions Behavior
-
 @MainActor
 final class SavePositionsBehaviorTests: XCTestCase {
 
@@ -1943,19 +1814,15 @@ final class SavePositionsBehaviorTests: XCTestCase {
         let store = WorkspaceStore()
         let ws = makeWorkspace(name: "Float", docked: false, floatingPosition: CodablePoint(x: 100, y: 100))
         store.config.workspaces = [ws]
-        let manager = FloatingBubbleManager(store: store)
+        let manager = FloatingBubbleManager(store: store, headless: true)
         manager.showFloatingBubble(for: ws)
 
-        // The panel is created at position (100, 100) by default
         manager.savePositions()
 
-        // Position should be updated from the actual panel frame
         let saved = store.workspaces.first!.floatingPosition
         XCTAssertNotNil(saved)
     }
 }
-
-// MARK: - Panel Resize Math
 
 @MainActor
 final class PanelResizeMathTests: XCTestCase {
@@ -1965,7 +1832,7 @@ final class PanelResizeMathTests: XCTestCase {
         store.config.workspaces = [
             makeWorkspace(name: "A", docked: true),
         ]
-        let controller = SidebarPanelController(store: store)
+        let controller = SidebarPanelController(store: store, headless: true)
         controller.show()
         let oneHeight = controller.panelFrame!.height
 
@@ -1979,14 +1846,12 @@ final class PanelResizeMathTests: XCTestCase {
 
     func test_sidebar_panel_has_minimum_height_with_zero_bubbles() {
         let store = WorkspaceStore()
-        let controller = SidebarPanelController(store: store)
+        let controller = SidebarPanelController(store: store, headless: true)
         controller.show()
 
         XCTAssertGreaterThan(controller.panelFrame!.height, 0)
     }
 }
-
-// MARK: - AnyCodable Edge Cases
 
 final class AnyCodableEdgeCaseTests: XCTestCase {
 

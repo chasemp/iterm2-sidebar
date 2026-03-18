@@ -71,8 +71,9 @@ struct MenuBarContent: View {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = WorkspaceStore()
-    lazy var sidebarController = SidebarPanelController(store: store)
-    lazy var floatingManager = FloatingBubbleManager(store: store)
+    private(set) lazy var sidebarController = SidebarPanelController(store: store, headless: headless)
+    private(set) lazy var floatingManager = FloatingBubbleManager(store: store, headless: headless)
+    var headless = false
     let hotkeyRegistrar = HotkeyRegistrar()
     private var dragStateMachine = BubbleDragStateMachine()
     private var focusTask: Task<Void, Never>?

@@ -43,12 +43,14 @@ final class SidebarPanel: NSPanel {
 final class SidebarPanelController {
     private var panel: SidebarPanel?
     private let store: WorkspaceStore
+    private let headless: Bool
 
     var onDragChanged: ((String, CGSize) -> Void)?
     var onDragEnded: ((String) -> Void)?
 
-    init(store: WorkspaceStore) {
+    init(store: WorkspaceStore, headless: Bool = false) {
         self.store = store
+        self.headless = headless
     }
 
     func show() {
@@ -69,13 +71,13 @@ final class SidebarPanelController {
             panel = SidebarPanel(contentView: hostingView, width: store.config.sidebar.width)
             panel?.updatePosition(store.config.sidebar.position, width: store.config.sidebar.width)
         }
-        panel?.orderFront(nil)
+        if !headless { panel?.orderFront(nil) }
         panel?.resizeToFit(bubbleCount: store.workspaces.filter(\.docked).count)
         store.sidebarVisible = true
     }
 
     func hide() {
-        panel?.orderOut(nil)
+        if !headless { panel?.orderOut(nil) }
         store.sidebarVisible = false
     }
 

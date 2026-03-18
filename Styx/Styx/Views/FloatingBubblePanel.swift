@@ -52,9 +52,11 @@ final class FloatingBubbleManager {
     private let store: WorkspaceStore
 
     var onRedockCheck: ((String, NSRect) -> Void)?
+    private let headless: Bool
 
-    init(store: WorkspaceStore) {
+    init(store: WorkspaceStore, headless: Bool = false) {
         self.store = store
+        self.headless = headless
     }
 
     func showFloatingBubble(for workspace: Workspace) {
@@ -79,20 +81,22 @@ final class FloatingBubbleManager {
         panel.onMouseUp = { [weak self] id, frame in
             self?.onRedockCheck?(id, frame)
         }
-        panel.orderFront(nil)
-        panel.clampToScreen()
+        if !headless {
+            panel.orderFront(nil)
+            panel.clampToScreen()
+        }
         panels[workspace.id] = panel
     }
 
     func hideFloatingBubble(for workspaceId: String) {
-        panels[workspaceId]?.orderOut(nil)
+        if !headless { panels[workspaceId]?.orderOut(nil) }
         panels.removeValue(forKey: workspaceId)
     }
 
     func recallAll() {
         for id in panels.keys {
             store.redockWorkspace(id, atSortOrder: store.workspaces.filter(\.docked).count)
-            panels[id]?.orderOut(nil)
+            if !headless { panels[id]?.orderOut(nil) }
         }
         panels.removeAll()
     }
