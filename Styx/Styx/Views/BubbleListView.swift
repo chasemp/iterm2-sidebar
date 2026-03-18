@@ -12,7 +12,7 @@ struct BubbleListView: View {
         store.workspaces.filter(\.docked).sorted { $0.sortOrder < $1.sortOrder }
     }
 
-    private var allMinimized: Bool {
+    private var allMin: Bool {
         !dockedWorkspaces.isEmpty && dockedWorkspaces.allSatisfy(\.collapsed)
     }
 
@@ -22,16 +22,16 @@ struct BubbleListView: View {
             if !dockedWorkspaces.isEmpty {
                 Button(action: {
                     Task {
-                        if allMinimized { await store.restoreAll() } else { await store.minimizeAll() }
+                        if allMin { await store.restoreAll() } else { await store.minAll() }
                     }
                 }) {
-                    Image(systemName: allMinimized ? "macwindow.on.rectangle" : "macwindow.badge.minus")
+                    Image(systemName: allMin ? "macwindow.on.rectangle" : "macwindow.badge.minus")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.tertiary)
                         .frame(width: 24, height: 16)
                 }
                 .buttonStyle(.plain)
-                .help(allMinimized ? "Restore All" : "Minimize All")
+                .help(allMin ? "Restore All" : "Min All")
                 .padding(.top, 4)
             }
 
@@ -45,7 +45,7 @@ struct BubbleListView: View {
                                 Task { await store.activateWorkspace(workspace) }
                             },
                             onDoubleTap: {
-                                Task { await store.toggleMinimize(workspace) }
+                                Task { await store.toggleMin(workspace) }
                             },
                             onDragChanged: { translation in
                                 onDragChanged?(workspace.id, translation)
@@ -95,8 +95,8 @@ struct BubbleListView: View {
 
     @ViewBuilder
     private func bubbleContextMenu(workspace: Workspace) -> some View {
-        Button(workspace.collapsed ? "Restore Terminals" : "Minimize Terminals") {
-            Task { await store.toggleMinimize(workspace) }
+        Button(workspace.collapsed ? "Restore" : "Min") {
+            Task { await store.toggleMin(workspace) }
         }
         Button("Rename Bubble...") {
             renameText = workspace.name

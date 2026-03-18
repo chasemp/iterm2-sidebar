@@ -28,7 +28,7 @@ struct Workspace: Identifiable, Codable, Equatable {
     var icon: String
     var sortOrder: Int
     var itermWindowId: String?
-    var asWindowId: Int?      // AppleScript numeric window ID for minimize/restore
+    var asWindowId: Int?      // AppleScript numeric window ID for min/restore
     var docked: Bool
     var collapsed: Bool
     var floatingPosition: CodablePoint?

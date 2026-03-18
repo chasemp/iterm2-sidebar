@@ -30,7 +30,7 @@ final class WorkspaceStore {
 
     func bubbleState(for workspace: Workspace) -> BubbleState {
         if workspace.collapsed {
-            return .minimized
+            return .min
         }
         if workspace.id == focusedWorkspaceId {
             return .focused
@@ -119,27 +119,27 @@ final class WorkspaceStore {
         }
     }
 
-    // MARK: - Minimize / Restore All
+    // MARK: - Min / Restore All
 
-    func minimizeAll() async {
+    func minAll() async {
         let before: [String: AnyCodable] = [
             "workspaceCount": A(workspaces.count),
-            "minimizedCount": A(workspaces.filter(\.collapsed).count)
+            "minCount": A(workspaces.filter(\.collapsed).count)
         ]
         for workspace in workspaces {
             guard let asId = workspace.asWindowId, !workspace.collapsed else { continue }
             _ = try? await bridge?.call("minimize_window", args: ["as_window_id": asId, "minimize": true])
         }
         for i in workspaces.indices { workspaces[i].collapsed = true }
-        L.record(component: "WorkspaceStore", operation: "minimizeAll",
+        L.record(component: "WorkspaceStore", operation: "minAll",
                  before: before,
-                 after: ["minimizedCount": A(workspaces.filter(\.collapsed).count)])
+                 after: ["minCount": A(workspaces.filter(\.collapsed).count)])
     }
 
     func restoreAll() async {
         let before: [String: AnyCodable] = [
             "workspaceCount": A(workspaces.count),
-            "minimizedCount": A(workspaces.filter(\.collapsed).count)
+            "minCount": A(workspaces.filter(\.collapsed).count)
         ]
         for workspace in workspaces {
             guard let asId = workspace.asWindowId, workspace.collapsed else { continue }
@@ -148,7 +148,7 @@ final class WorkspaceStore {
         for i in workspaces.indices { workspaces[i].collapsed = false }
         L.record(component: "WorkspaceStore", operation: "restoreAll",
                  before: before,
-                 after: ["minimizedCount": A(workspaces.filter(\.collapsed).count)])
+                 after: ["minCount": A(workspaces.filter(\.collapsed).count)])
     }
 
     // MARK: - Cycling
@@ -230,30 +230,30 @@ final class WorkspaceStore {
         }
     }
 
-    func toggleMinimize(_ workspace: Workspace) async {
+    func toggleMin(_ workspace: Workspace) async {
         guard let asId = workspace.asWindowId else {
-            L.record(component: "WorkspaceStore", operation: "toggleMinimize",
+            L.record(component: "WorkspaceStore", operation: "toggleMin",
                      before: ["id": A(workspace.id), "asWindowId": A("nil"), "collapsed": A(workspace.collapsed)],
                      after: ["id": A(workspace.id)],
                      outcome: .failure, errorMessage: "No AppleScript window ID")
             return
         }
         guard let index = workspaces.firstIndex(where: { $0.id == workspace.id }) else { return }
-        let shouldMinimize = !workspace.collapsed
+        let shouldMin = !workspace.collapsed
         let before: [String: AnyCodable] = [
             "id": A(workspace.id), "name": A(workspace.name),
             "asWindowId": A(asId), "collapsed": A(workspace.collapsed),
-            "shouldMinimize": A(shouldMinimize)
+            "shouldMin": A(shouldMin)
         ]
         do {
-            _ = try await bridge?.call("minimize_window", args: ["as_window_id": asId, "minimize": shouldMinimize])
-            workspaces[index].collapsed = shouldMinimize
-            L.record(component: "WorkspaceStore", operation: "toggleMinimize",
+            _ = try await bridge?.call("minimize_window", args: ["as_window_id": asId, "minimize": shouldMin])
+            workspaces[index].collapsed = shouldMin
+            L.record(component: "WorkspaceStore", operation: "toggleMin",
                      before: before,
-                     after: ["collapsed": A(shouldMinimize), "bridgeCallSucceeded": A(true)])
+                     after: ["collapsed": A(shouldMin), "bridgeCallSucceeded": A(true)])
         } catch {
-            logger.error("Failed to toggle minimize \(workspace.name): \(error)")
-            L.record(component: "WorkspaceStore", operation: "toggleMinimize",
+            logger.error("Failed to toggle min \(workspace.name): \(error)")
+            L.record(component: "WorkspaceStore", operation: "toggleMin",
                      before: before, after: before,
                      outcome: .failure, errorMessage: error.localizedDescription)
         }
