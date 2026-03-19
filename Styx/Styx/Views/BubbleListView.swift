@@ -1,25 +1,25 @@
 import SwiftUI
 
 struct BubbleListView: View {
-    let store: WorkspaceStore
+    let store: BubbleStore
     var onDragChanged: ((String, CGSize) -> Void)?
     var onDragEnded: ((String) -> Void)?
     @State private var showQuickAdd = false
-    @State private var renamingWorkspaceId: String?
+    @State private var renamingBubbleId: String?
     @State private var renameText = ""
 
-    private var dockedWorkspaces: [Workspace] {
-        store.workspaces.filter(\.docked).sorted { $0.sortOrder < $1.sortOrder }
+    private var dockedBubbles: [Bubble] {
+        store.bubbles.filter(\.docked).sorted { $0.sortOrder < $1.sortOrder }
     }
 
     private var allMin: Bool {
-        !dockedWorkspaces.isEmpty && dockedWorkspaces.allSatisfy(\.collapsed)
+        !dockedBubbles.isEmpty && dockedBubbles.allSatisfy(\.collapsed)
     }
 
     var body: some View {
         VStack(spacing: 4) {
             // Minimize All / Restore All toggle
-            if !dockedWorkspaces.isEmpty {
+            if !dockedBubbles.isEmpty {
                 Button(action: {
                     Task {
                         if allMin { await store.restoreAll() } else { await store.minAll() }
@@ -37,37 +37,42 @@ struct BubbleListView: View {
 
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(spacing: 4) {
-                    ForEach(dockedWorkspaces) { workspace in
+                    ForEach(Array(dockedBubbles.enumerated()), id: \.element.id) { index, bubble in
                         BubbleView(
-                            workspace: workspace,
-                            state: store.bubbleState(for: workspace),
+                            bubble: bubble,
+                            state: store.bubbleState(for: bubble),
                             onTap: {
-                                Task { await store.activateWorkspace(workspace) }
+                                Task { await store.activateBubble(bubble) }
                             },
                             onDoubleTap: {
-                                Task { await store.toggleMin(workspace) }
+                                Task { await store.toggleMin(bubble) }
                             },
                             onDragChanged: { translation in
-                                onDragChanged?(workspace.id, translation)
+                                onDragChanged?(bubble.id, translation)
                             },
                             onDragEnded: {
-                                onDragEnded?(workspace.id)
+                                onDragEnded?(bubble.id)
                             }
                         )
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(.white.opacity(index == store.selectedBubbleIndex ? 0.15 : 0))
+                                .animation(.easeInOut(duration: 0.15), value: store.selectedBubbleIndex)
+                        )
                         .contextMenu {
-                            bubbleContextMenu(workspace: workspace)
+                            bubbleContextMenu(bubble: bubble)
                         }
                         .popover(isPresented: Binding(
-                            get: { renamingWorkspaceId == workspace.id },
-                            set: { if !$0 { renamingWorkspaceId = nil } }
+                            get: { renamingBubbleId == bubble.id },
+                            set: { if !$0 { renamingBubbleId = nil } }
                         )) {
                             RenamePopover(
                                 name: $renameText,
                                 onConfirm: {
-                                    store.renameWorkspace(workspace.id, to: renameText)
-                                    renamingWorkspaceId = nil
+                                    store.renameBubble(bubble.id, to: renameText)
+                                    renamingBubbleId = nil
                                 },
-                                onCancel: { renamingWorkspaceId = nil }
+                                onCancel: { renamingBubbleId = nil }
                             )
                         }
                     }
@@ -94,17 +99,17 @@ struct BubbleListView: View {
     }
 
     @ViewBuilder
-    private func bubbleContextMenu(workspace: Workspace) -> some View {
-        Button(workspace.collapsed ? "Restore" : "Min") {
-            Task { await store.toggleMin(workspace) }
+    private func bubbleContextMenu(bubble: Bubble) -> some View {
+        Button(bubble.collapsed ? "Restore" : "Min") {
+            Task { await store.toggleMin(bubble) }
         }
         Button("Rename Bubble...") {
-            renameText = workspace.name
-            renamingWorkspaceId = workspace.id
+            renameText = bubble.name
+            renamingBubbleId = bubble.id
         }
         Divider()
         Button("Delete Bubble") {
-            Task { await store.deleteWorkspace(workspace) }
+            Task { await store.deleteBubble(bubble) }
         }
     }
 }

@@ -6,15 +6,22 @@ final class SidebarPanel: NSPanel {
     static let maxHeight: CGFloat = 1200
     private static let resizeGripHeight: CGFloat = 16
 
-    init(contentView: NSView, width: CGFloat = 72) {
+    init(contentView: NSView, width: CGFloat = 72, showWindowControls: Bool = false) {
+        let mask: NSWindow.StyleMask = showWindowControls
+            ? [.titled, .closable, .miniaturizable, .nonactivatingPanel]
+            : [.nonactivatingPanel, .borderless]
         super.init(
             contentRect: NSRect(x: 0, y: 200, width: width, height: 600),
-            styleMask: [.nonactivatingPanel, .borderless],
+            styleMask: mask,
             backing: .buffered,
             defer: false
         )
+        if showWindowControls {
+            self.title = "Styx"
+            self.titleVisibility = .hidden
+        }
         self.level = .floating
-        self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .managed, .participatesInCycle]
         self.isOpaque = false
         self.backgroundColor = .clear
         self.hasShadow = true
@@ -36,8 +43,19 @@ final class SidebarPanel: NSPanel {
         self.isMovableByWindowBackground = false
     }
 
-    override var canBecomeKey: Bool { false }
+    override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    /// Close button hides the sidebar instead of destroying it.
+    var onCloseRequest: (() -> Void)?
+
+    override func close() {
+        if let onCloseRequest {
+            onCloseRequest()
+        } else {
+            super.close()
+        }
+    }
 
     func updatePosition(_ position: CodablePoint, width: CGFloat) {
         let screen = NSScreen.main ?? NSScreen.screens.first!
@@ -120,6 +138,18 @@ final class SidebarContentView: NSView {
         dragStartFrameOriginY = panel.frame.origin.y
         dragStartFrameHeight = panel.frame.height
         dragMode = isInGrip(event) ? .resize : .move
+
+        // Activate the app and make panel key so keyboard navigation works.
+        // When the user subsequently taps a bubble, activateBubble will
+        // immediately switch focus to iTerm2, so the brief activation is
+        // imperceptible.
+        NSApp.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
+        StateLedger.shared.record(
+            component: "SidebarContentView", operation: "mouseDown",
+            before: ["dragMode": AnyCodable(dragMode == .resize ? "resize" : "move")],
+            after: ["appActivated": AnyCodable(true), "panelMadeKey": AnyCodable(true)]
+        )
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -154,15 +184,16 @@ final class SidebarContentView: NSView {
 @MainActor
 final class SidebarPanelController {
     private var panel: SidebarPanel?
-    private let store: WorkspaceStore
+    private let store: BubbleStore
     private let headless: Bool
     private var autoRefreshTask: Task<Void, Never>?
     private var lastBubbleCount: Int = 0
+    private var lastShowWindowControls: Bool = false
 
     var onDragChanged: ((String, CGSize) -> Void)?
     var onDragEnded: ((String) -> Void)?
 
-    init(store: WorkspaceStore, headless: Bool = false) {
+    init(store: BubbleStore, headless: Bool = false) {
         self.store = store
         self.headless = headless
         startAutoRefresh()
@@ -175,7 +206,15 @@ final class SidebarPanelController {
                 guard let self else { break }
                 let wrapper = self.panel?.contentView as? SidebarContentView
                 let userResizing = wrapper?.isUserResizing ?? false
-                let count = self.store.workspaces.filter(\.docked).count
+                // Recreate panel if window controls setting changed
+                let wantControls = self.store.config.sidebar.showWindowControls
+                if wantControls != self.lastShowWindowControls && self.panel != nil {
+                    self.lastShowWindowControls = wantControls
+                    let wasVisible = self.store.sidebarVisible
+                    self.destroyPanel()
+                    if wasVisible { self.show() }
+                }
+                let count = self.store.bubbles.filter(\.docked).count
                 if count != self.lastBubbleCount && !userResizing {
                     self.lastBubbleCount = count
                     self.panel?.resizeToFit(bubbleCount: count)
@@ -184,9 +223,15 @@ final class SidebarPanelController {
         }
     }
 
+    private func destroyPanel() {
+        if !headless { panel?.orderOut(nil) }
+        panel = nil
+    }
+
     func show() {
         let panelExisted = panel != nil
         if panel == nil {
+            lastShowWindowControls = store.config.sidebar.showWindowControls
             let rootView = BubbleListView(
                 store: store,
                 onDragChanged: { [weak self] id, translation in
@@ -200,10 +245,15 @@ final class SidebarPanelController {
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             let hostingView = NSHostingView(rootView: rootView)
-            panel = SidebarPanel(contentView: hostingView, width: store.config.sidebar.width)
+            panel = SidebarPanel(
+                contentView: hostingView,
+                width: store.config.sidebar.width,
+                showWindowControls: store.config.sidebar.showWindowControls
+            )
+            panel?.onCloseRequest = { [weak self] in self?.hide() }
             panel?.updatePosition(store.config.sidebar.position, width: store.config.sidebar.width)
         }
-        let bubbleCount = store.workspaces.filter(\.docked).count
+        let bubbleCount = store.bubbles.filter(\.docked).count
         if !headless { panel?.orderFront(nil) }
         panel?.resizeToFit(bubbleCount: bubbleCount)
         store.sidebarVisible = true
@@ -236,9 +286,25 @@ final class SidebarPanelController {
     func refresh() {
         let wrapper = panel?.contentView as? SidebarContentView
         if !(wrapper?.isUserResizing ?? false) {
-            panel?.resizeToFit(bubbleCount: store.workspaces.filter(\.docked).count)
+            panel?.resizeToFit(bubbleCount: store.bubbles.filter(\.docked).count)
         }
     }
 
     var panelFrame: NSRect? { panel?.frame }
+
+    var panelCanBecomeKey: Bool { panel?.canBecomeKey ?? false }
+
+    /// Make sidebar the key window (called when Styx becomes active via Cmd+Tab).
+    func makeKey() {
+        let wasBefore = panel?.isKeyWindow ?? false
+        if !headless { panel?.makeKeyAndOrderFront(nil) }
+        let isAfter = panel?.isKeyWindow ?? false
+        StateLedger.shared.record(
+            component: "Sidebar", operation: "makeKey",
+            before: ["wasKeyWindow": AnyCodable(wasBefore), "headless": AnyCodable(headless)],
+            after: ["isKeyWindow": AnyCodable(isAfter)]
+        )
+    }
+
+    var isKeyWindow: Bool { panel?.isKeyWindow ?? false }
 }

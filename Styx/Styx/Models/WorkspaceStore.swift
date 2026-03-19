@@ -7,14 +7,14 @@ private func A(_ v: Any) -> AnyCodable { AnyCodable(v) }
 
 @Observable
 @MainActor
-final class WorkspaceStore {
-    private let logger = Logger(subsystem: "com.styx", category: "WorkspaceStore")
+final class BubbleStore {
+    private let logger = Logger(subsystem: "com.styx", category: "BubbleStore")
 
     var config: StyxConfig = StyxConfig()
 
-    var workspaces: [Workspace] {
-        get { config.workspaces }
-        set { config.workspaces = newValue }
+    var bubbles: [Bubble] {
+        get { config.bubbles }
+        set { config.bubbles = newValue }
     }
 
     var sidebarVisible: Bool {
@@ -22,20 +22,21 @@ final class WorkspaceStore {
         set { config.sidebar.visible = newValue }
     }
 
-    var focusedWorkspaceId: String?
+    var focusedBubbleId: String?
+    var selectedBubbleIndex: Int?
     var bridgeConnected = false
     var iTerm2Reachable = false
 
     // MARK: - Bubble State
 
-    func bubbleState(for workspace: Workspace) -> BubbleState {
-        if workspace.collapsed {
+    func bubbleState(for bubble: Bubble) -> BubbleState {
+        if bubble.collapsed {
             return .min
         }
-        if workspace.id == focusedWorkspaceId {
+        if bubble.id == focusedBubbleId {
             return .focused
         }
-        if workspace.itermWindowId != nil {
+        if bubble.itermWindowId != nil {
             return .active
         }
         return .dormant
@@ -45,18 +46,18 @@ final class WorkspaceStore {
 
     func handleFocusEvent(_ event: FocusEvent) {
         guard event.kind == .window, let windowId = event.windowId else { return }
-        if let workspace = workspaces.first(where: { $0.itermWindowId == windowId }) {
-            focusedWorkspaceId = workspace.id
+        if let bubble = bubbles.first(where: { $0.itermWindowId == windowId }) {
+            focusedBubbleId = bubble.id
         } else {
-            focusedWorkspaceId = nil
+            focusedBubbleId = nil
         }
     }
 
     // MARK: - Window Liveness
 
     func refreshWindowLiveness(activeWindowIds: Set<String>) {
-        workspaces.removeAll { workspace in
-            if let windowId = workspace.itermWindowId, !activeWindowIds.contains(windowId) {
+        bubbles.removeAll { bubble in
+            if let windowId = bubble.itermWindowId, !activeWindowIds.contains(windowId) {
                 return true
             }
             return false
@@ -75,7 +76,7 @@ final class WorkspaceStore {
             iTerm2Reachable = true
         } catch {
             iTerm2Reachable = false
-            L.record(component: "WorkspaceStore", operation: "pollWindowLiveness",
+            L.record(component: "BubbleStore", operation: "pollWindowLiveness",
                      before: ["iTerm2Reachable": A(iTerm2Reachable)],
                      after: ["iTerm2Reachable": A(false)],
                      outcome: .failure, errorMessage: error.localizedDescription)
@@ -84,38 +85,35 @@ final class WorkspaceStore {
 
     // MARK: - Rename
 
-    func renameWorkspace(_ id: String, to newName: String) {
+    func renameBubble(_ id: String, to newName: String) {
         let trimmed = newName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        guard let index = workspaces.firstIndex(where: { $0.id == id }) else { return }
-        workspaces[index].name = trimmed
+        guard let index = bubbles.firstIndex(where: { $0.id == id }) else { return }
+        bubbles[index].name = trimmed
         saveConfig()
-        if let windowId = workspaces[index].itermWindowId {
-            Task {
-                _ = try? await bridge?.call("set_window_title", args: ["window_id": windowId, "title": trimmed])
-            }
-        }
+        let b = bubbles[index]
+        Task { await applyBubbleDecoration(b) }
     }
 
     // MARK: - Dock / Undock
 
-    func undockWorkspace(_ id: String, position: CGPoint) {
-        guard let index = workspaces.firstIndex(where: { $0.id == id }) else { return }
-        workspaces[index].docked = false
-        workspaces[index].floatingPosition = CodablePoint(position)
+    func undockBubble(_ id: String, position: CGPoint) {
+        guard let index = bubbles.firstIndex(where: { $0.id == id }) else { return }
+        bubbles[index].docked = false
+        bubbles[index].floatingPosition = CodablePoint(position)
     }
 
-    func redockWorkspace(_ id: String, atSortOrder sortOrder: Int) {
-        guard let index = workspaces.firstIndex(where: { $0.id == id }) else { return }
-        workspaces[index].docked = true
-        workspaces[index].floatingPosition = nil
-        workspaces[index].sortOrder = sortOrder
+    func redockBubble(_ id: String, atSortOrder sortOrder: Int) {
+        guard let index = bubbles.firstIndex(where: { $0.id == id }) else { return }
+        bubbles[index].docked = true
+        bubbles[index].floatingPosition = nil
+        bubbles[index].sortOrder = sortOrder
     }
 
     func recallAll() {
-        for i in workspaces.indices {
-            workspaces[i].docked = true
-            workspaces[i].floatingPosition = nil
+        for i in bubbles.indices {
+            bubbles[i].docked = true
+            bubbles[i].floatingPosition = nil
         }
     }
 
@@ -123,40 +121,40 @@ final class WorkspaceStore {
 
     func minAll() async {
         let before: [String: AnyCodable] = [
-            "workspaceCount": A(workspaces.count),
-            "minCount": A(workspaces.filter(\.collapsed).count)
+            "bubbleCount": A(bubbles.count),
+            "minCount": A(bubbles.filter(\.collapsed).count)
         ]
-        for workspace in workspaces {
-            guard let asId = workspace.asWindowId, !workspace.collapsed else { continue }
+        for bubble in bubbles {
+            guard let asId = bubble.asWindowId, !bubble.collapsed else { continue }
             _ = try? await bridge?.call("minimize_window", args: ["as_window_id": asId, "minimize": true])
         }
-        for i in workspaces.indices { workspaces[i].collapsed = true }
-        L.record(component: "WorkspaceStore", operation: "minAll",
+        for i in bubbles.indices { bubbles[i].collapsed = true }
+        L.record(component: "BubbleStore", operation: "minAll",
                  before: before,
-                 after: ["minCount": A(workspaces.filter(\.collapsed).count)])
+                 after: ["minCount": A(bubbles.filter(\.collapsed).count)])
     }
 
     func restoreAll() async {
         let before: [String: AnyCodable] = [
-            "workspaceCount": A(workspaces.count),
-            "minCount": A(workspaces.filter(\.collapsed).count)
+            "bubbleCount": A(bubbles.count),
+            "minCount": A(bubbles.filter(\.collapsed).count)
         ]
-        for workspace in workspaces {
-            guard let asId = workspace.asWindowId, workspace.collapsed else { continue }
+        for bubble in bubbles {
+            guard let asId = bubble.asWindowId, bubble.collapsed else { continue }
             _ = try? await bridge?.call("minimize_window", args: ["as_window_id": asId, "minimize": false])
         }
-        for i in workspaces.indices { workspaces[i].collapsed = false }
-        L.record(component: "WorkspaceStore", operation: "restoreAll",
+        for i in bubbles.indices { bubbles[i].collapsed = false }
+        L.record(component: "BubbleStore", operation: "restoreAll",
                  before: before,
-                 after: ["minCount": A(workspaces.filter(\.collapsed).count)])
+                 after: ["minCount": A(bubbles.filter(\.collapsed).count)])
     }
 
     // MARK: - Cycling
 
-    func nextWorkspaceId(forward: Bool) -> String? {
-        let sorted = workspaces.sorted { $0.sortOrder < $1.sortOrder }
+    func nextBubbleId(forward: Bool) -> String? {
+        let sorted = bubbles.sorted { $0.sortOrder < $1.sortOrder }
         guard !sorted.isEmpty else { return nil }
-        let currentIndex = sorted.firstIndex { $0.id == focusedWorkspaceId } ?? -1
+        let currentIndex = sorted.firstIndex { $0.id == focusedBubbleId } ?? -1
         let nextIndex: Int
         if forward {
             nextIndex = (currentIndex + 1) % sorted.count
@@ -166,10 +164,69 @@ final class WorkspaceStore {
         return sorted[nextIndex].id
     }
 
-    func workspaceIdByIndex(_ index: Int) -> String? {
-        let sorted = workspaces.sorted { $0.sortOrder < $1.sortOrder }
+    func bubbleIdByIndex(_ index: Int) -> String? {
+        let sorted = bubbles.sorted { $0.sortOrder < $1.sortOrder }
         guard index >= 0, index < sorted.count else { return nil }
         return sorted[index].id
+    }
+
+    // MARK: - Bubble Selection (Keyboard Navigation)
+
+    private var dockedSorted: [Bubble] {
+        bubbles.filter(\.docked).sorted { $0.sortOrder < $1.sortOrder }
+    }
+
+    func selectNextBubble() {
+        let docked = dockedSorted
+        guard !docked.isEmpty else { return }
+        if let current = selectedBubbleIndex {
+            selectedBubbleIndex = (current + 1) % docked.count
+        } else {
+            selectedBubbleIndex = 0
+        }
+        L.record(component: "BubbleStore", operation: "selectNextBubble",
+                 before: [:], after: ["selectedBubbleIndex": A(selectedBubbleIndex as Any)])
+    }
+
+    func selectPreviousBubble() {
+        let docked = dockedSorted
+        guard !docked.isEmpty else { return }
+        if let current = selectedBubbleIndex {
+            selectedBubbleIndex = (current - 1 + docked.count) % docked.count
+        } else {
+            selectedBubbleIndex = docked.count - 1
+        }
+        L.record(component: "BubbleStore", operation: "selectPreviousBubble",
+                 before: [:], after: ["selectedBubbleIndex": A(selectedBubbleIndex as Any)])
+    }
+
+    func selectBubbleByIndex(_ index: Int) {
+        let docked = dockedSorted
+        guard index >= 0, index < docked.count else { return }
+        selectedBubbleIndex = index
+        L.record(component: "BubbleStore", operation: "selectBubbleByIndex",
+                 before: [:], after: ["selectedBubbleIndex": A(index)])
+    }
+
+    func activateSelectedBubble() async {
+        let docked = dockedSorted
+        guard let index = selectedBubbleIndex, index < docked.count else {
+            L.record(component: "BubbleStore", operation: "activateSelectedBubble",
+                     before: ["selectedBubbleIndex": A(selectedBubbleIndex as Any)],
+                     after: [:], outcome: .failure, errorMessage: "No valid selection")
+            return
+        }
+        let b = docked[index]
+        L.record(component: "BubbleStore", operation: "activateSelectedBubble",
+                 before: ["selectedBubbleIndex": A(index), "bubbleId": A(b.id), "name": A(b.name)],
+                 after: ["activating": A(true)])
+        await activateBubble(b)
+    }
+
+    func clearBubbleSelection() {
+        selectedBubbleIndex = nil
+        L.record(component: "BubbleStore", operation: "clearBubbleSelection",
+                 before: [:], after: ["selectedBubbleIndex": A("nil")])
     }
 
     // MARK: - Bridge-Dependent Actions (require iTerm2)
@@ -179,16 +236,16 @@ final class WorkspaceStore {
     func start(bridge: any BridgeService) async {
         self.bridge = bridge
         loadConfig()
-        let before: [String: AnyCodable] = ["bridgeConnected": A(false), "workspaceCount": A(workspaces.count)]
+        let before: [String: AnyCodable] = ["bridgeConnected": A(false), "bubbleCount": A(bubbles.count)]
         do {
             try await bridge.start()
             bridgeConnected = true
-            L.record(component: "WorkspaceStore", operation: "start",
+            L.record(component: "BubbleStore", operation: "start",
                      before: before, after: ["bridgeConnected": A(true)])
         } catch {
             logger.error("Failed to start bridge: \(error)")
             bridgeConnected = false
-            L.record(component: "WorkspaceStore", operation: "start",
+            L.record(component: "BubbleStore", operation: "start",
                      before: before, after: ["bridgeConnected": A(false)],
                      outcome: .failure, errorMessage: error.localizedDescription)
         }
@@ -200,11 +257,11 @@ final class WorkspaceStore {
         do {
             try await bridge.start()
             bridgeConnected = true
-            L.record(component: "WorkspaceStore", operation: "connectBridge",
+            L.record(component: "BubbleStore", operation: "connectBridge",
                      before: before, after: ["bridgeConnected": A(true)])
         } catch {
             bridgeConnected = false
-            L.record(component: "WorkspaceStore", operation: "connectBridge",
+            L.record(component: "BubbleStore", operation: "connectBridge",
                      before: before, after: ["bridgeConnected": A(false)],
                      outcome: .failure, errorMessage: error.localizedDescription)
         }
@@ -215,51 +272,51 @@ final class WorkspaceStore {
         saveConfig()
     }
 
-    func activateWorkspace(_ workspace: Workspace) async {
-        guard let windowId = workspace.itermWindowId else { return }
-        let before: [String: AnyCodable] = ["id": A(workspace.id), "windowId": A(windowId), "name": A(workspace.name)]
+    func activateBubble(_ bubble: Bubble) async {
+        guard let windowId = bubble.itermWindowId else { return }
+        let before: [String: AnyCodable] = ["id": A(bubble.id), "windowId": A(windowId), "name": A(bubble.name)]
         do {
             _ = try await bridge?.call("activate_window", args: ["window_id": windowId])
-            L.record(component: "WorkspaceStore", operation: "activateWorkspace",
+            L.record(component: "BubbleStore", operation: "activateBubble",
                      before: before, after: ["activated": A(true)])
         } catch {
-            logger.error("Failed to activate workspace \(workspace.name): \(error)")
-            L.record(component: "WorkspaceStore", operation: "activateWorkspace",
+            logger.error("Failed to activate bubble \(bubble.name): \(error)")
+            L.record(component: "BubbleStore", operation: "activateBubble",
                      before: before, after: before,
                      outcome: .failure, errorMessage: error.localizedDescription)
         }
     }
 
-    func toggleMin(_ workspace: Workspace) async {
-        guard let asId = workspace.asWindowId else {
-            L.record(component: "WorkspaceStore", operation: "toggleMin",
-                     before: ["id": A(workspace.id), "asWindowId": A("nil"), "collapsed": A(workspace.collapsed)],
-                     after: ["id": A(workspace.id)],
+    func toggleMin(_ bubble: Bubble) async {
+        guard let asId = bubble.asWindowId else {
+            L.record(component: "BubbleStore", operation: "toggleMin",
+                     before: ["id": A(bubble.id), "asWindowId": A("nil"), "collapsed": A(bubble.collapsed)],
+                     after: ["id": A(bubble.id)],
                      outcome: .failure, errorMessage: "No AppleScript window ID")
             return
         }
-        guard let index = workspaces.firstIndex(where: { $0.id == workspace.id }) else { return }
-        let shouldMin = !workspace.collapsed
+        guard let index = bubbles.firstIndex(where: { $0.id == bubble.id }) else { return }
+        let shouldMin = !bubble.collapsed
         let before: [String: AnyCodable] = [
-            "id": A(workspace.id), "name": A(workspace.name),
-            "asWindowId": A(asId), "collapsed": A(workspace.collapsed),
+            "id": A(bubble.id), "name": A(bubble.name),
+            "asWindowId": A(asId), "collapsed": A(bubble.collapsed),
             "shouldMin": A(shouldMin)
         ]
         do {
             _ = try await bridge?.call("minimize_window", args: ["as_window_id": asId, "minimize": shouldMin])
-            workspaces[index].collapsed = shouldMin
-            L.record(component: "WorkspaceStore", operation: "toggleMin",
+            bubbles[index].collapsed = shouldMin
+            L.record(component: "BubbleStore", operation: "toggleMin",
                      before: before,
                      after: ["collapsed": A(shouldMin), "bridgeCallSucceeded": A(true)])
         } catch {
-            logger.error("Failed to toggle min \(workspace.name): \(error)")
-            L.record(component: "WorkspaceStore", operation: "toggleMin",
+            logger.error("Failed to toggle min \(bubble.name): \(error)")
+            L.record(component: "BubbleStore", operation: "toggleMin",
                      before: before, after: before,
                      outcome: .failure, errorMessage: error.localizedDescription)
         }
     }
 
-    func createWorkspace(name: String, color: String, icon: String, tabs: [WorkspaceTab]) async {
+    func createBubble(name: String, color: String, icon: String, tabs: [BubbleTab]) async {
         let tabArgs = tabs.map { tab -> [String: Any] in
             var dict: [String: Any] = ["name": tab.name]
             if let dir = tab.dir { dict["dir"] = dir }
@@ -268,7 +325,7 @@ final class WorkspaceStore {
         }
 
         let before: [String: AnyCodable] = [
-            "name": A(name), "workspaceCount": A(workspaces.count),
+            "name": A(name), "bubbleCount": A(bubbles.count),
             "bridgeConnected": A(bridgeConnected)
         ]
 
@@ -276,39 +333,95 @@ final class WorkspaceStore {
             let result = try await bridge?.call("create_window", args: ["tabs": tabArgs])
             guard let data = result as? [String: Any],
                   let windowId = data["window_id"] as? String else {
-                L.record(component: "WorkspaceStore", operation: "createWorkspace",
+                L.record(component: "BubbleStore", operation: "createBubble",
                          before: before, after: before,
                          outcome: .failure, errorMessage: "No window_id in bridge response")
                 return
             }
 
-            _ = try? await bridge?.call("set_window_title", args: ["window_id": windowId, "title": name])
-
             let asId = (data["as_window_id"] as? Int)
-            let workspace = Workspace(
+            let bubble = Bubble(
                 name: name, color: color, icon: icon,
-                sortOrder: workspaces.count,
+                sortOrder: bubbles.count,
                 itermWindowId: windowId, asWindowId: asId, tabs: tabs
             )
-            workspaces.append(workspace)
+            bubbles.append(bubble)
             saveConfig()
-            L.record(component: "WorkspaceStore", operation: "createWorkspace",
+            L.record(component: "BubbleStore", operation: "createBubble",
                      before: before,
-                     after: ["workspaceCount": A(workspaces.count), "windowId": A(windowId), "asWindowId": A(asId as Any)])
+                     after: ["bubbleCount": A(bubbles.count), "windowId": A(windowId), "asWindowId": A(asId as Any)])
+
+            // Apply bubble decoration after bubble is saved
+            await applyBubbleDecoration(bubble)
         } catch {
-            logger.error("Failed to create workspace: \(error)")
-            L.record(component: "WorkspaceStore", operation: "createWorkspace",
+            logger.error("Failed to create bubble: \(error)")
+            L.record(component: "BubbleStore", operation: "createBubble",
                      before: before, after: before,
                      outcome: .failure, errorMessage: error.localizedDescription)
         }
     }
 
-    func deleteWorkspace(_ workspace: Workspace) async {
-        if let windowId = workspace.itermWindowId {
+    func deleteBubble(_ bubble: Bubble) async {
+        if let windowId = bubble.itermWindowId {
             _ = try? await bridge?.call("close_window", args: ["window_id": windowId])
         }
-        workspaces.removeAll { $0.id == workspace.id }
+        bubbles.removeAll { $0.id == bubble.id }
         saveConfig()
+    }
+
+    // MARK: - Bubble Decoration on iTerm2 Windows
+
+    /// Apply bubble name and color to the iTerm2 window so the user can
+    /// visually identify which bubble owns which window.
+    func applyBubbleDecoration(_ bubble: Bubble) async {
+        guard let windowId = bubble.itermWindowId else {
+            L.record(component: "BubbleStore", operation: "applyBubbleDecoration",
+                     before: ["id": A(bubble.id), "windowId": A("nil")],
+                     after: [:], outcome: .failure, errorMessage: "No iTerm2 window ID")
+            return
+        }
+        let before: [String: AnyCodable] = [
+            "id": A(bubble.id), "name": A(bubble.name),
+            "color": A(bubble.color), "windowId": A(windowId),
+            "showBadge": A(config.terminal.showBubbleBadge),
+            "setEnvVar": A(config.terminal.setBubbleEnvVar),
+        ]
+        var titleOk = false
+        var colorOk = false
+        var envOk = false
+        do {
+            _ = try await bridge?.call("set_window_title", args: ["window_id": windowId, "title": bubble.name])
+            titleOk = true
+        } catch {
+            logger.error("applyBubbleDecoration: set_window_title failed: \(error)")
+        }
+        do {
+            _ = try await bridge?.call("set_tab_color", args: [
+                "window_id": windowId,
+                "hex_color": bubble.color,
+                "badge_text": config.terminal.showBubbleBadge ? bubble.name : "",
+            ])
+            colorOk = true
+        } catch {
+            logger.error("applyBubbleDecoration: set_tab_color failed: \(error)")
+        }
+        if config.terminal.setBubbleEnvVar {
+            do {
+                _ = try await bridge?.call("set_bubble_env", args: [
+                    "window_id": windowId,
+                    "bubble_name": bubble.name,
+                    "hex_color": bubble.color,
+                ])
+                envOk = true
+            } catch {
+                logger.error("applyBubbleDecoration: set_bubble_env failed: \(error)")
+            }
+        }
+        L.record(component: "BubbleStore", operation: "applyBubbleDecoration",
+                 before: before,
+                 after: ["titleApplied": A(titleOk), "colorApplied": A(colorOk), "envApplied": A(envOk)],
+                 outcome: (titleOk && colorOk) ? .success : .failure,
+                 errorMessage: (!titleOk || !colorOk) ? "Partial failure: title=\(titleOk) color=\(colorOk) env=\(envOk)" : nil)
     }
 
     // MARK: - Capture Current Window
@@ -320,21 +433,24 @@ final class WorkspaceStore {
                   let windowId = data["window_id"] as? String else { return }
 
             let tabsData = data["tabs"] as? [[String: Any]] ?? []
-            let tabs = tabsData.compactMap { tabDict -> WorkspaceTab? in
+            let tabs = tabsData.compactMap { tabDict -> BubbleTab? in
                 let sessions = tabDict["sessions"] as? [[String: Any]] ?? []
                 let sessionName = sessions.first?["name"] as? String ?? "shell"
-                return WorkspaceTab(name: sessionName, dir: nil, cmd: nil)
+                return BubbleTab(name: sessionName, dir: nil, cmd: nil)
             }
 
-            let resolvedName = name ?? tabs.first?.name ?? "Workspace"
+            let resolvedName = name ?? tabs.first?.name ?? "Bubble"
 
-            let workspace = Workspace(
+            let bubble = Bubble(
                 name: resolvedName, color: color, icon: icon,
-                sortOrder: workspaces.count,
+                sortOrder: bubbles.count,
                 itermWindowId: windowId, tabs: tabs
             )
-            workspaces.append(workspace)
+            bubbles.append(bubble)
             saveConfig()
+
+            // Apply bubble decoration after bubble is saved
+            await applyBubbleDecoration(bubble)
         } catch {
             logger.error("Failed to capture current window: \(error)")
         }
@@ -351,7 +467,7 @@ final class WorkspaceStore {
             try data.write(to: target, options: .atomic)
         } catch {
             logger.error("Failed to save config: \(error)")
-            L.record(component: "WorkspaceStore", operation: "saveConfig",
+            L.record(component: "BubbleStore", operation: "saveConfig",
                      before: [:], after: [:],
                      outcome: .failure, errorMessage: error.localizedDescription)
         }
@@ -366,12 +482,12 @@ final class WorkspaceStore {
         do {
             let data = try Data(contentsOf: target)
             config = try JSONDecoder().decode(StyxConfig.self, from: data)
-            L.record(component: "WorkspaceStore", operation: "loadConfig",
+            L.record(component: "BubbleStore", operation: "loadConfig",
                      before: ["path": A(target.path)],
-                     after: ["workspaceCount": A(workspaces.count), "sidebarVisible": A(sidebarVisible)])
+                     after: ["bubbleCount": A(bubbles.count), "sidebarVisible": A(sidebarVisible)])
         } catch {
             logger.error("Failed to load config: \(error)")
-            L.record(component: "WorkspaceStore", operation: "loadConfig",
+            L.record(component: "BubbleStore", operation: "loadConfig",
                      before: ["path": A(target.path)], after: [:],
                      outcome: .failure, errorMessage: error.localizedDescription)
         }

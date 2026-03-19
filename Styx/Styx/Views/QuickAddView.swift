@@ -1,13 +1,12 @@
 import SwiftUI
 
 struct QuickAddView: View {
-    let store: WorkspaceStore
+    let store: BubbleStore
     @Binding var isPresented: Bool
 
     @State private var name = ""
     @State private var color = "#4A90D9"
     @State private var icon = "terminal"
-    @State private var selectedTemplate: WorkspaceTemplate?
 
     private let colorOptions = [
         "#FF6B6B", "#4ECDC4", "#4A90D9", "#A77DC2",
@@ -21,24 +20,9 @@ struct QuickAddView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("New Workspace").font(.headline)
+            Text("New Bubble").font(.headline)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("From Template").font(.caption).foregroundStyle(.secondary)
-                HStack(spacing: 8) {
-                    ForEach(WorkspaceTemplate.all, id: \.name) { template in
-                        Button(template.name) {
-                            name = template.name
-                            icon = template.icon
-                            selectedTemplate = template
-                        }
-                        .buttonStyle(.bordered).controlSize(.small)
-                    }
-                }
-            }
-
-            Divider()
-            TextField("Workspace name", text: $name).textFieldStyle(.roundedBorder)
+            TextField("Bubble name", text: $name).textFieldStyle(.roundedBorder)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Color").font(.caption).foregroundStyle(.secondary)
@@ -67,7 +51,7 @@ struct QuickAddView: View {
             HStack {
                 Spacer()
                 Button("Cancel") { isPresented = false }.keyboardShortcut(.cancelAction)
-                Button("Create") { Task { await createWorkspace() } }
+                Button("Create") { Task { await createBubble() } }
                     .keyboardShortcut(.defaultAction)
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
@@ -76,9 +60,9 @@ struct QuickAddView: View {
         .frame(width: 300)
     }
 
-    private func createWorkspace() async {
-        let tabs = selectedTemplate?.tabs ?? [WorkspaceTab(name: "shell", dir: "~", cmd: nil)]
-        await store.createWorkspace(
+    private func createBubble() async {
+        let tabs = [BubbleTab(name: "shell", dir: "~", cmd: nil)]
+        await store.createBubble(
             name: name.trimmingCharacters(in: .whitespaces),
             color: color,
             icon: icon,

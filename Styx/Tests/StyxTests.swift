@@ -2,7 +2,7 @@ import XCTest
 import SwiftUI
 @testable import Styx
 
-func makeWorkspace(
+func makeBubble(
     name: String = "Test",
     color: String = "#4A90D9",
     icon: String = "terminal",
@@ -10,9 +10,9 @@ func makeWorkspace(
     itermWindowId: String? = nil,
     docked: Bool = true,
     floatingPosition: CodablePoint? = nil,
-    tabs: [WorkspaceTab] = []
-) -> Workspace {
-    Workspace(
+    tabs: [BubbleTab] = []
+) -> Bubble {
+    Bubble(
         name: name,
         color: color,
         icon: icon,
@@ -28,8 +28,8 @@ func makeTab(
     name: String = "shell",
     dir: String? = "~",
     cmd: String? = nil
-) -> WorkspaceTab {
-    WorkspaceTab(name: name, dir: dir, cmd: cmd)
+) -> BubbleTab {
+    BubbleTab(name: name, dir: dir, cmd: cmd)
 }
 
 final class CodablePointTests: XCTestCase {
@@ -64,10 +64,10 @@ final class CodablePointTests: XCTestCase {
     }
 }
 
-final class WorkspaceTests: XCTestCase {
+final class BubbleTests: XCTestCase {
 
-    func test_creates_workspace_with_defaults() {
-        let ws = makeWorkspace(name: "Backend")
+    func test_creates_bubble_with_defaults() {
+        let ws = makeBubble(name: "Backend")
         XCTAssertEqual(ws.name, "Backend")
         XCTAssertEqual(ws.color, "#4A90D9")
         XCTAssertEqual(ws.icon, "terminal")
@@ -77,13 +77,13 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertTrue(ws.tabs.isEmpty)
     }
 
-    func test_workspace_has_stable_id() {
-        let ws = makeWorkspace(name: "Test")
+    func test_bubble_has_stable_id() {
+        let ws = makeBubble(name: "Test")
         XCTAssertFalse(ws.id.isEmpty)
     }
 
-    func test_workspace_roundtrips_through_json() throws {
-        let ws = makeWorkspace(
+    func test_bubble_roundtrips_through_json() throws {
+        let ws = makeBubble(
             name: "Backend",
             color: "#FF6B6B",
             icon: "server.rack",
@@ -95,7 +95,7 @@ final class WorkspaceTests: XCTestCase {
         )
 
         let data = try JSONEncoder().encode(ws)
-        let decoded = try JSONDecoder().decode(Workspace.self, from: data)
+        let decoded = try JSONDecoder().decode(Bubble.self, from: data)
 
         XCTAssertEqual(decoded.name, "Backend")
         XCTAssertEqual(decoded.color, "#FF6B6B")
@@ -107,8 +107,8 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(decoded.tabs[1].cmd, "make test")
     }
 
-    func test_workspace_equality() {
-        let a = makeWorkspace(name: "A")
+    func test_bubble_equality() {
+        let a = makeBubble(name: "A")
         var b = a
         XCTAssertEqual(a, b)
         b.name = "B"
@@ -116,7 +116,7 @@ final class WorkspaceTests: XCTestCase {
     }
 }
 
-final class WorkspaceTabTests: XCTestCase {
+final class BubbleTabTests: XCTestCase {
 
     func test_tab_id_is_name() {
         let tab = makeTab(name: "server")
@@ -126,7 +126,7 @@ final class WorkspaceTabTests: XCTestCase {
     func test_tab_roundtrips_through_json() throws {
         let tab = makeTab(name: "dev", dir: "~/projects", cmd: "npm start")
         let data = try JSONEncoder().encode(tab)
-        let decoded = try JSONDecoder().decode(WorkspaceTab.self, from: data)
+        let decoded = try JSONDecoder().decode(BubbleTab.self, from: data)
         XCTAssertEqual(decoded.name, "dev")
         XCTAssertEqual(decoded.dir, "~/projects")
         XCTAssertEqual(decoded.cmd, "npm start")
@@ -138,13 +138,13 @@ final class StyxConfigTests: XCTestCase {
     func test_default_config_has_version_1() {
         let config = StyxConfig()
         XCTAssertEqual(config.version, 1)
-        XCTAssertTrue(config.workspaces.isEmpty)
+        XCTAssertTrue(config.bubbles.isEmpty)
         XCTAssertTrue(config.sidebar.visible)
     }
 
     func test_config_roundtrips_through_json() throws {
         var config = StyxConfig()
-        config.workspaces = [makeWorkspace(name: "Backend"), makeWorkspace(name: "Frontend")]
+        config.bubbles = [makeBubble(name: "Backend"), makeBubble(name: "Frontend")]
         config.hotkeys.toggleSidebar = "Cmd+Shift+S"
         config.sidebar.width = 80
 
@@ -154,8 +154,8 @@ final class StyxConfigTests: XCTestCase {
         let decoded = try JSONDecoder().decode(StyxConfig.self, from: data)
 
         XCTAssertEqual(decoded.version, 1)
-        XCTAssertEqual(decoded.workspaces.count, 2)
-        XCTAssertEqual(decoded.workspaces[0].name, "Backend")
+        XCTAssertEqual(decoded.bubbles.count, 2)
+        XCTAssertEqual(decoded.bubbles[0].name, "Backend")
         XCTAssertEqual(decoded.hotkeys.toggleSidebar, "Cmd+Shift+S")
         XCTAssertEqual(decoded.sidebar.width, 80)
     }
@@ -263,118 +263,118 @@ final class BridgeProtocolTests: XCTestCase {
     }
 }
 
-final class WorkspaceTemplateTests: XCTestCase {
+final class BubbleTemplateTests: XCTestCase {
 
     func test_templates_are_available() {
-        XCTAssertFalse(WorkspaceTemplate.all.isEmpty)
+        XCTAssertFalse(BubbleTemplate.all.isEmpty)
     }
 
     func test_web_dev_template_has_tabs() {
-        XCTAssertEqual(WorkspaceTemplate.webDev.name, "Web Dev")
-        XCTAssertFalse(WorkspaceTemplate.webDev.tabs.isEmpty)
+        XCTAssertEqual(BubbleTemplate.webDev.name, "Web Dev")
+        XCTAssertFalse(BubbleTemplate.webDev.tabs.isEmpty)
     }
 
     func test_devops_template_has_tabs() {
-        XCTAssertEqual(WorkspaceTemplate.devOps.name, "DevOps")
-        XCTAssertFalse(WorkspaceTemplate.devOps.tabs.isEmpty)
+        XCTAssertEqual(BubbleTemplate.devOps.name, "DevOps")
+        XCTAssertFalse(BubbleTemplate.devOps.tabs.isEmpty)
     }
 }
 
 @MainActor
-final class WorkspaceStoreTests: XCTestCase {
+final class BubbleStoreTests: XCTestCase {
 
-    private func makeStore(workspaces: [Workspace] = []) -> WorkspaceStore {
-        let store = WorkspaceStore()
-        store.config.workspaces = workspaces
+    private func makeStore(bubbles: [Bubble] = []) -> BubbleStore {
+        let store = BubbleStore()
+        store.config.bubbles = bubbles
         return store
     }
 
-    func test_focused_workspace_returns_focused_state() {
-        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
-        let store = makeStore(workspaces: [ws])
-        store.focusedWorkspaceId = ws.id
+    func test_focused_bubble_returns_focused_state() {
+        let ws = makeBubble(name: "A", itermWindowId: "pty-1")
+        let store = makeStore(bubbles: [ws])
+        store.focusedBubbleId = ws.id
 
         XCTAssertEqual(store.bubbleState(for: ws), .focused)
     }
 
-    func test_workspace_with_window_but_not_focused_returns_active() {
-        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
-        let store = makeStore(workspaces: [ws])
-        store.focusedWorkspaceId = nil
+    func test_bubble_with_window_but_not_focused_returns_active() {
+        let ws = makeBubble(name: "A", itermWindowId: "pty-1")
+        let store = makeStore(bubbles: [ws])
+        store.focusedBubbleId = nil
 
         XCTAssertEqual(store.bubbleState(for: ws), .active)
     }
 
-    func test_workspace_without_window_returns_dormant() {
-        let ws = makeWorkspace(name: "A", itermWindowId: nil)
-        let store = makeStore(workspaces: [ws])
+    func test_bubble_without_window_returns_dormant() {
+        let ws = makeBubble(name: "A", itermWindowId: nil)
+        let store = makeStore(bubbles: [ws])
 
         XCTAssertEqual(store.bubbleState(for: ws), .dormant)
     }
 
     func test_undock_sets_docked_false_and_saves_position() {
-        var ws = makeWorkspace(name: "A", docked: true)
-        let store = makeStore(workspaces: [ws])
+        var ws = makeBubble(name: "A", docked: true)
+        let store = makeStore(bubbles: [ws])
 
-        store.undockWorkspace(ws.id, position: CGPoint(x: 100, y: 200))
+        store.undockBubble(ws.id, position: CGPoint(x: 100, y: 200))
 
-        let updated = store.workspaces.first { $0.id == ws.id }!
+        let updated = store.bubbles.first { $0.id == ws.id }!
         XCTAssertFalse(updated.docked)
         XCTAssertEqual(updated.floatingPosition, CodablePoint(x: 100, y: 200))
     }
 
     func test_redock_sets_docked_true_and_clears_position() {
-        var ws = makeWorkspace(name: "A", docked: false, floatingPosition: CodablePoint(x: 50, y: 50))
-        let store = makeStore(workspaces: [ws])
+        var ws = makeBubble(name: "A", docked: false, floatingPosition: CodablePoint(x: 50, y: 50))
+        let store = makeStore(bubbles: [ws])
 
-        store.redockWorkspace(ws.id, atSortOrder: 0)
+        store.redockBubble(ws.id, atSortOrder: 0)
 
-        let updated = store.workspaces.first { $0.id == ws.id }!
+        let updated = store.bubbles.first { $0.id == ws.id }!
         XCTAssertTrue(updated.docked)
         XCTAssertNil(updated.floatingPosition)
         XCTAssertEqual(updated.sortOrder, 0)
     }
 
-    func test_recall_all_redocks_every_floating_workspace() {
-        let a = makeWorkspace(name: "A", docked: false, floatingPosition: CodablePoint(x: 10, y: 10))
-        let b = makeWorkspace(name: "B", docked: false, floatingPosition: CodablePoint(x: 20, y: 20))
-        let c = makeWorkspace(name: "C", docked: true)
-        let store = makeStore(workspaces: [a, b, c])
+    func test_recall_all_redocks_every_floating_bubble() {
+        let a = makeBubble(name: "A", docked: false, floatingPosition: CodablePoint(x: 10, y: 10))
+        let b = makeBubble(name: "B", docked: false, floatingPosition: CodablePoint(x: 20, y: 20))
+        let c = makeBubble(name: "C", docked: true)
+        let store = makeStore(bubbles: [a, b, c])
 
         store.recallAll()
 
-        XCTAssertTrue(store.workspaces.allSatisfy(\.docked))
-        XCTAssertTrue(store.workspaces.allSatisfy { $0.floatingPosition == nil })
+        XCTAssertTrue(store.bubbles.allSatisfy(\.docked))
+        XCTAssertTrue(store.bubbles.allSatisfy { $0.floatingPosition == nil })
     }
 
     func test_cycle_forward_wraps_around() {
-        let a = makeWorkspace(name: "A", sortOrder: 0)
-        let b = makeWorkspace(name: "B", sortOrder: 1)
-        let store = makeStore(workspaces: [a, b])
-        store.focusedWorkspaceId = b.id
+        let a = makeBubble(name: "A", sortOrder: 0)
+        let b = makeBubble(name: "B", sortOrder: 1)
+        let store = makeStore(bubbles: [a, b])
+        store.focusedBubbleId = b.id
 
-        let next = store.nextWorkspaceId(forward: true)
+        let next = store.nextBubbleId(forward: true)
         XCTAssertEqual(next, a.id)
     }
 
     func test_cycle_backward_wraps_around() {
-        let a = makeWorkspace(name: "A", sortOrder: 0)
-        let b = makeWorkspace(name: "B", sortOrder: 1)
-        let store = makeStore(workspaces: [a, b])
-        store.focusedWorkspaceId = a.id
+        let a = makeBubble(name: "A", sortOrder: 0)
+        let b = makeBubble(name: "B", sortOrder: 1)
+        let store = makeStore(bubbles: [a, b])
+        store.focusedBubbleId = a.id
 
-        let prev = store.nextWorkspaceId(forward: false)
+        let prev = store.nextBubbleId(forward: false)
         XCTAssertEqual(prev, b.id)
     }
 
-    func test_workspace_by_index_returns_correct_id() {
-        let a = makeWorkspace(name: "A", sortOrder: 0)
-        let b = makeWorkspace(name: "B", sortOrder: 1)
-        let store = makeStore(workspaces: [a, b])
+    func test_bubble_by_index_returns_correct_id() {
+        let a = makeBubble(name: "A", sortOrder: 0)
+        let b = makeBubble(name: "B", sortOrder: 1)
+        let store = makeStore(bubbles: [a, b])
 
-        XCTAssertEqual(store.workspaceIdByIndex(0), a.id)
-        XCTAssertEqual(store.workspaceIdByIndex(1), b.id)
-        XCTAssertNil(store.workspaceIdByIndex(5))
+        XCTAssertEqual(store.bubbleIdByIndex(0), a.id)
+        XCTAssertEqual(store.bubbleIdByIndex(1), b.id)
+        XCTAssertNil(store.bubbleIdByIndex(5))
     }
 
     func test_sidebar_visible_mirrors_config() {
@@ -393,22 +393,22 @@ final class WorkspaceStoreTests: XCTestCase {
 
         let configURL = tempDir.appendingPathComponent("workspaces.json")
 
-        let store = makeStore(workspaces: [makeWorkspace(name: "Saved")])
+        let store = makeStore(bubbles: [makeBubble(name: "Saved")])
         store.saveConfig(to: configURL)
 
-        let store2 = WorkspaceStore()
+        let store2 = BubbleStore()
         store2.loadConfig(from: configURL)
 
-        XCTAssertEqual(store2.workspaces.count, 1)
-        XCTAssertEqual(store2.workspaces.first?.name, "Saved")
+        XCTAssertEqual(store2.bubbles.count, 1)
+        XCTAssertEqual(store2.bubbles.first?.name, "Saved")
     }
 
     func test_load_missing_config_uses_defaults() {
         let bogusURL = FileManager.default.temporaryDirectory.appendingPathComponent("nonexistent.json")
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         store.loadConfig(from: bogusURL)
 
-        XCTAssertTrue(store.workspaces.isEmpty)
+        XCTAssertTrue(store.bubbles.isEmpty)
         XCTAssertEqual(store.config.version, 1)
     }
 }
@@ -462,28 +462,28 @@ final class BubbleDragStateMachineTests: XCTestCase {
 
     func test_small_translation_transitions_to_pending() {
         var machine = BubbleDragStateMachine()
-        machine.dragChanged(workspaceId: "ws-1", translation: CGSize(width: 10, height: 0))
-        XCTAssertEqual(machine.phase, .pending(workspaceId: "ws-1"))
+        machine.dragChanged(bubbleId: "ws-1", translation: CGSize(width: 10, height: 0))
+        XCTAssertEqual(machine.phase, .pending(bubbleId: "ws-1"))
     }
 
     func test_large_translation_transitions_to_active() {
         var machine = BubbleDragStateMachine()
-        machine.dragChanged(workspaceId: "ws-1", translation: CGSize(width: 10, height: 0))
-        machine.dragChanged(workspaceId: "ws-1", translation: CGSize(width: 25, height: 0))
-        XCTAssertEqual(machine.phase, .active(workspaceId: "ws-1"))
+        machine.dragChanged(bubbleId: "ws-1", translation: CGSize(width: 10, height: 0))
+        machine.dragChanged(bubbleId: "ws-1", translation: CGSize(width: 25, height: 0))
+        XCTAssertEqual(machine.phase, .active(bubbleId: "ws-1"))
     }
 
     func test_end_from_pending_resets_to_idle() {
         var machine = BubbleDragStateMachine()
-        machine.dragChanged(workspaceId: "ws-1", translation: CGSize(width: 10, height: 0))
+        machine.dragChanged(bubbleId: "ws-1", translation: CGSize(width: 10, height: 0))
         machine.dragEnded()
         XCTAssertEqual(machine.phase, .idle)
     }
 
-    func test_end_from_active_returns_workspace_id() {
+    func test_end_from_active_returns_bubble_id() {
         var machine = BubbleDragStateMachine()
-        machine.dragChanged(workspaceId: "ws-1", translation: CGSize(width: 10, height: 0))
-        machine.dragChanged(workspaceId: "ws-1", translation: CGSize(width: 25, height: 0))
+        machine.dragChanged(bubbleId: "ws-1", translation: CGSize(width: 10, height: 0))
+        machine.dragChanged(bubbleId: "ws-1", translation: CGSize(width: 25, height: 0))
         let result = machine.dragEnded()
         XCTAssertEqual(result, "ws-1")
         XCTAssertEqual(machine.phase, .idle)
@@ -491,15 +491,15 @@ final class BubbleDragStateMachineTests: XCTestCase {
 
     func test_cancel_resets_to_idle() {
         var machine = BubbleDragStateMachine()
-        machine.dragChanged(workspaceId: "ws-1", translation: CGSize(width: 25, height: 25))
+        machine.dragChanged(bubbleId: "ws-1", translation: CGSize(width: 25, height: 25))
         machine.cancel()
         XCTAssertEqual(machine.phase, .idle)
     }
 
     func test_cancel_from_pending_resets_to_idle() {
         var machine = BubbleDragStateMachine()
-        machine.dragChanged(workspaceId: "ws-1", translation: CGSize(width: 10, height: 0))
-        XCTAssertEqual(machine.phase, .pending(workspaceId: "ws-1"))
+        machine.dragChanged(bubbleId: "ws-1", translation: CGSize(width: 10, height: 0))
+        XCTAssertEqual(machine.phase, .pending(bubbleId: "ws-1"))
         machine.cancel()
         XCTAssertEqual(machine.phase, .idle)
     }
@@ -513,7 +513,7 @@ final class BubbleDragStateMachineTests: XCTestCase {
 
     func test_double_end_returns_nil_second_time() {
         var machine = BubbleDragStateMachine()
-        machine.dragChanged(workspaceId: "ws-1", translation: CGSize(width: 25, height: 0))
+        machine.dragChanged(bubbleId: "ws-1", translation: CGSize(width: 25, height: 0))
         _ = machine.dragEnded()
         let second = machine.dragEnded()
         XCTAssertNil(second)
@@ -521,11 +521,11 @@ final class BubbleDragStateMachineTests: XCTestCase {
 
     func test_active_phase_ignores_further_drag_changes() {
         var machine = BubbleDragStateMachine()
-        machine.dragChanged(workspaceId: "ws-1", translation: CGSize(width: 10, height: 0)) // → pending
-        machine.dragChanged(workspaceId: "ws-1", translation: CGSize(width: 25, height: 0)) // → active
-        XCTAssertEqual(machine.phase, .active(workspaceId: "ws-1"))
-        machine.dragChanged(workspaceId: "ws-2", translation: CGSize(width: 100, height: 0)) // ignored
-        XCTAssertEqual(machine.phase, .active(workspaceId: "ws-1"))
+        machine.dragChanged(bubbleId: "ws-1", translation: CGSize(width: 10, height: 0)) // → pending
+        machine.dragChanged(bubbleId: "ws-1", translation: CGSize(width: 25, height: 0)) // → active
+        XCTAssertEqual(machine.phase, .active(bubbleId: "ws-1"))
+        machine.dragChanged(bubbleId: "ws-2", translation: CGSize(width: 100, height: 0)) // ignored
+        XCTAssertEqual(machine.phase, .active(bubbleId: "ws-1"))
     }
 }
 
@@ -653,60 +653,60 @@ final class HotkeyParserEdgeCaseTests: XCTestCase {
 }
 
 @MainActor
-final class WorkspaceStoreEdgeCaseTests: XCTestCase {
+final class BubbleStoreEdgeCaseTests: XCTestCase {
 
-    func test_cycle_with_single_workspace_returns_same() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "Only", sortOrder: 0)
-        store.config.workspaces = [ws]
-        store.focusedWorkspaceId = ws.id
+    func test_cycle_with_single_bubble_returns_same() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Only", sortOrder: 0)
+        store.config.bubbles = [ws]
+        store.focusedBubbleId = ws.id
 
-        XCTAssertEqual(store.nextWorkspaceId(forward: true), ws.id)
-        XCTAssertEqual(store.nextWorkspaceId(forward: false), ws.id)
+        XCTAssertEqual(store.nextBubbleId(forward: true), ws.id)
+        XCTAssertEqual(store.nextBubbleId(forward: false), ws.id)
     }
 
-    func test_cycle_with_no_workspaces_returns_nil() {
-        let store = WorkspaceStore()
-        XCTAssertNil(store.nextWorkspaceId(forward: true))
+    func test_cycle_with_no_bubbles_returns_nil() {
+        let store = BubbleStore()
+        XCTAssertNil(store.nextBubbleId(forward: true))
     }
 
     func test_cycle_with_unfocused_starts_at_first() {
-        let store = WorkspaceStore()
-        let a = makeWorkspace(name: "A", sortOrder: 0)
-        let b = makeWorkspace(name: "B", sortOrder: 1)
-        store.config.workspaces = [a, b]
-        store.focusedWorkspaceId = nil
+        let store = BubbleStore()
+        let a = makeBubble(name: "A", sortOrder: 0)
+        let b = makeBubble(name: "B", sortOrder: 1)
+        store.config.bubbles = [a, b]
+        store.focusedBubbleId = nil
 
-        XCTAssertEqual(store.nextWorkspaceId(forward: true), a.id)
+        XCTAssertEqual(store.nextBubbleId(forward: true), a.id)
     }
 
-    func test_workspace_by_negative_index_returns_nil() {
-        let store = WorkspaceStore()
-        store.config.workspaces = [makeWorkspace(name: "A")]
-        XCTAssertNil(store.workspaceIdByIndex(-1))
+    func test_bubble_by_negative_index_returns_nil() {
+        let store = BubbleStore()
+        store.config.bubbles = [makeBubble(name: "A")]
+        XCTAssertNil(store.bubbleIdByIndex(-1))
     }
 
-    func test_undock_nonexistent_workspace_is_noop() {
-        let store = WorkspaceStore()
-        store.config.workspaces = [makeWorkspace(name: "A")]
-        let countBefore = store.workspaces.count
-        store.undockWorkspace("nonexistent", position: .zero)
-        XCTAssertEqual(store.workspaces.count, countBefore)
+    func test_undock_nonexistent_bubble_is_noop() {
+        let store = BubbleStore()
+        store.config.bubbles = [makeBubble(name: "A")]
+        let countBefore = store.bubbles.count
+        store.undockBubble("nonexistent", position: .zero)
+        XCTAssertEqual(store.bubbles.count, countBefore)
     }
 
-    func test_redock_nonexistent_workspace_is_noop() {
-        let store = WorkspaceStore()
-        store.config.workspaces = [makeWorkspace(name: "A")]
-        store.redockWorkspace("nonexistent", atSortOrder: 0)
-        XCTAssertTrue(store.workspaces.first!.docked)
+    func test_redock_nonexistent_bubble_is_noop() {
+        let store = BubbleStore()
+        store.config.bubbles = [makeBubble(name: "A")]
+        store.redockBubble("nonexistent", atSortOrder: 0)
+        XCTAssertTrue(store.bubbles.first!.docked)
     }
 
     func test_recall_all_with_no_floating_is_noop() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "A", docked: true)
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A", docked: true)
+        store.config.bubbles = [ws]
         store.recallAll()
-        XCTAssertTrue(store.workspaces.allSatisfy(\.docked))
+        XCTAssertTrue(store.bubbles.allSatisfy(\.docked))
     }
 
     func test_load_corrupted_json_keeps_defaults() {
@@ -717,33 +717,33 @@ final class WorkspaceStoreEdgeCaseTests: XCTestCase {
         let url = tempDir.appendingPathComponent("workspaces.json")
         try! "not valid json {{{".data(using: .utf8)!.write(to: url)
 
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         store.loadConfig(from: url)
         XCTAssertEqual(store.config.version, 1)
-        XCTAssertTrue(store.workspaces.isEmpty)
+        XCTAssertTrue(store.bubbles.isEmpty)
     }
 
     func test_bubble_state_focused_takes_priority_over_active() {
-        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
-        let store = WorkspaceStore()
-        store.config.workspaces = [ws]
-        store.focusedWorkspaceId = ws.id
+        let ws = makeBubble(name: "A", itermWindowId: "pty-1")
+        let store = BubbleStore()
+        store.config.bubbles = [ws]
+        store.focusedBubbleId = ws.id
         XCTAssertEqual(store.bubbleState(for: ws), .focused)
     }
 
-    func test_activate_workspace_without_window_id_is_noop() async {
-        let ws = makeWorkspace(name: "No Window", itermWindowId: nil)
-        let store = WorkspaceStore()
-        store.config.workspaces = [ws]
-        await store.activateWorkspace(ws)
+    func test_activate_bubble_without_window_id_is_noop() async {
+        let ws = makeBubble(name: "No Window", itermWindowId: nil)
+        let store = BubbleStore()
+        store.config.bubbles = [ws]
+        await store.activateBubble(ws)
     }
 
-    func test_delete_workspace_removes_from_list() async {
-        let ws = makeWorkspace(name: "Doomed", itermWindowId: nil)
-        let store = WorkspaceStore()
-        store.config.workspaces = [ws]
-        await store.deleteWorkspace(ws)
-        XCTAssertTrue(store.workspaces.isEmpty)
+    func test_delete_bubble_removes_from_list() async {
+        let ws = makeBubble(name: "Doomed", itermWindowId: nil)
+        let store = BubbleStore()
+        store.config.bubbles = [ws]
+        await store.deleteBubble(ws)
+        XCTAssertTrue(store.bubbles.isEmpty)
     }
 }
 
@@ -824,63 +824,63 @@ actor FakeBridge: BridgeService {
 }
 
 @MainActor
-final class WorkspaceStoreBridgeTests: XCTestCase {
+final class BubbleStoreBridgeTests: XCTestCase {
 
-    func test_create_workspace_adds_to_store() async {
-        let store = WorkspaceStore()
+    func test_create_bubble_adds_to_store() async {
+        let store = BubbleStore()
         let fake = FakeBridge()
         await fake.setCallResult("create_window", value: ["window_id": "pty-new"])
         await store.connectBridge(fake)
 
-        await store.createWorkspace(name: "New", color: "#FF0000", icon: "terminal", tabs: [
-            WorkspaceTab(name: "shell", dir: "~", cmd: nil)
+        await store.createBubble(name: "New", color: "#FF0000", icon: "terminal", tabs: [
+            BubbleTab(name: "shell", dir: "~", cmd: nil)
         ])
 
-        XCTAssertEqual(store.workspaces.count, 1)
-        XCTAssertEqual(store.workspaces.first?.name, "New")
-        XCTAssertEqual(store.workspaces.first?.itermWindowId, "pty-new")
+        XCTAssertEqual(store.bubbles.count, 1)
+        XCTAssertEqual(store.bubbles.first?.name, "New")
+        XCTAssertEqual(store.bubbles.first?.itermWindowId, "pty-new")
     }
 
-    func test_create_workspace_with_bridge_error_does_not_add() async {
-        let store = WorkspaceStore()
+    func test_create_bubble_with_bridge_error_does_not_add() async {
+        let store = BubbleStore()
         let fake = FakeBridge()
         await store.connectBridge(fake)
         await fake.setShouldThrow(true)
 
-        await store.createWorkspace(name: "Fail", color: "#FF0000", icon: "terminal", tabs: [])
+        await store.createBubble(name: "Fail", color: "#FF0000", icon: "terminal", tabs: [])
 
-        XCTAssertTrue(store.workspaces.isEmpty)
+        XCTAssertTrue(store.bubbles.isEmpty)
     }
 
-    func test_delete_workspace_calls_close_window() async {
-        let store = WorkspaceStore()
+    func test_delete_bubble_calls_close_window() async {
+        let store = BubbleStore()
         let fake = FakeBridge()
         await store.connectBridge(fake)
-        let ws = makeWorkspace(name: "Doomed", itermWindowId: "pty-doom")
-        store.config.workspaces = [ws]
+        let ws = makeBubble(name: "Doomed", itermWindowId: "pty-doom")
+        store.config.bubbles = [ws]
 
-        await store.deleteWorkspace(ws)
+        await store.deleteBubble(ws)
 
-        XCTAssertTrue(store.workspaces.isEmpty)
+        XCTAssertTrue(store.bubbles.isEmpty)
         let log = await fake.callLog
         XCTAssertTrue(log.contains { $0.cmd == "close_window" })
     }
 
-    func test_activate_workspace_calls_bridge() async {
-        let store = WorkspaceStore()
+    func test_activate_bubble_calls_bridge() async {
+        let store = BubbleStore()
         let fake = FakeBridge()
         await store.connectBridge(fake)
-        let ws = makeWorkspace(name: "Active", itermWindowId: "pty-1")
-        store.config.workspaces = [ws]
+        let ws = makeBubble(name: "Active", itermWindowId: "pty-1")
+        store.config.bubbles = [ws]
 
-        await store.activateWorkspace(ws)
+        await store.activateBubble(ws)
 
         let log = await fake.callLog
         XCTAssertTrue(log.contains { $0.cmd == "activate_window" })
     }
 
     func test_start_sets_bridge_connected() async {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let fake = FakeBridge()
         await store.connectBridge(fake)
 
@@ -888,7 +888,7 @@ final class WorkspaceStoreBridgeTests: XCTestCase {
     }
 
     func test_start_with_failing_bridge_sets_disconnected() async {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let fake = FakeBridge()
         await fake.setShouldThrowOnStart(true)
         await store.connectBridge(fake)
@@ -901,7 +901,7 @@ final class WorkspaceStoreBridgeTests: XCTestCase {
 final class SidebarBehaviorTests: XCTestCase {
 
     func test_showing_sidebar_makes_panel_visible() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let controller = SidebarPanelController(store: store, headless: true)
 
         controller.show()
@@ -911,7 +911,7 @@ final class SidebarBehaviorTests: XCTestCase {
     }
 
     func test_hiding_sidebar_removes_panel() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let controller = SidebarPanelController(store: store, headless: true)
 
         controller.show()
@@ -921,7 +921,7 @@ final class SidebarBehaviorTests: XCTestCase {
     }
 
     func test_toggle_twice_returns_to_original_state() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let controller = SidebarPanelController(store: store, headless: true)
         let initialVisibility = store.sidebarVisible
 
@@ -932,17 +932,17 @@ final class SidebarBehaviorTests: XCTestCase {
     }
 
     func test_refresh_updates_panel_size_for_bubble_count() {
-        let store = WorkspaceStore()
-        store.config.workspaces = [
-            makeWorkspace(name: "A", docked: true),
-            makeWorkspace(name: "B", docked: true),
-            makeWorkspace(name: "C", docked: false),
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", docked: true),
+            makeBubble(name: "B", docked: true),
+            makeBubble(name: "C", docked: false),
         ]
         let controller = SidebarPanelController(store: store, headless: true)
         controller.show()
 
         let frameBefore = controller.panelFrame
-        store.config.workspaces.append(makeWorkspace(name: "D", docked: true))
+        store.config.bubbles.append(makeBubble(name: "D", docked: true))
         controller.refresh()
         let frameAfter = controller.panelFrame
 
@@ -956,9 +956,9 @@ final class SidebarBehaviorTests: XCTestCase {
 final class FloatingBubbleBehaviorTests: XCTestCase {
 
     func test_show_floating_bubble_creates_panel() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let manager = FloatingBubbleManager(store: store, headless: true)
-        let ws = makeWorkspace(name: "Floater", docked: false, floatingPosition: CodablePoint(x: 100, y: 100))
+        let ws = makeBubble(name: "Floater", docked: false, floatingPosition: CodablePoint(x: 100, y: 100))
 
         manager.showFloatingBubble(for: ws)
 
@@ -966,9 +966,9 @@ final class FloatingBubbleBehaviorTests: XCTestCase {
     }
 
     func test_hide_floating_bubble_removes_panel() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let manager = FloatingBubbleManager(store: store, headless: true)
-        let ws = makeWorkspace(name: "Floater", docked: false)
+        let ws = makeBubble(name: "Floater", docked: false)
 
         manager.showFloatingBubble(for: ws)
         manager.hideFloatingBubble(for: ws.id)
@@ -977,10 +977,10 @@ final class FloatingBubbleBehaviorTests: XCTestCase {
     }
 
     func test_recall_all_removes_all_panels_and_redocks() {
-        let store = WorkspaceStore()
-        let a = makeWorkspace(name: "A", docked: false)
-        let b = makeWorkspace(name: "B", docked: false)
-        store.config.workspaces = [a, b]
+        let store = BubbleStore()
+        let a = makeBubble(name: "A", docked: false)
+        let b = makeBubble(name: "B", docked: false)
+        store.config.bubbles = [a, b]
         let manager = FloatingBubbleManager(store: store, headless: true)
         manager.showFloatingBubble(for: a)
         manager.showFloatingBubble(for: b)
@@ -989,14 +989,14 @@ final class FloatingBubbleBehaviorTests: XCTestCase {
 
         XCTAssertFalse(manager.hasPanel(for: a.id))
         XCTAssertFalse(manager.hasPanel(for: b.id))
-        XCTAssertTrue(store.workspaces.allSatisfy(\.docked))
+        XCTAssertTrue(store.bubbles.allSatisfy(\.docked))
     }
 
-    func test_refresh_syncs_panels_with_undocked_workspaces() {
-        let store = WorkspaceStore()
-        let a = makeWorkspace(name: "A", docked: false)
-        let b = makeWorkspace(name: "B", docked: true)
-        store.config.workspaces = [a, b]
+    func test_refresh_syncs_panels_with_undocked_bubbles() {
+        let store = BubbleStore()
+        let a = makeBubble(name: "A", docked: false)
+        let b = makeBubble(name: "B", docked: true)
+        store.config.bubbles = [a, b]
         let manager = FloatingBubbleManager(store: store, headless: true)
 
         manager.refresh()
@@ -1005,22 +1005,22 @@ final class FloatingBubbleBehaviorTests: XCTestCase {
         XCTAssertFalse(manager.hasPanel(for: b.id))
     }
 
-    func test_refresh_removes_panels_for_redocked_workspaces() {
-        let store = WorkspaceStore()
-        var ws = makeWorkspace(name: "A", docked: false)
-        store.config.workspaces = [ws]
+    func test_refresh_removes_panels_for_redocked_bubbles() {
+        let store = BubbleStore()
+        var ws = makeBubble(name: "A", docked: false)
+        store.config.bubbles = [ws]
         let manager = FloatingBubbleManager(store: store, headless: true)
         manager.showFloatingBubble(for: ws)
 
-        store.redockWorkspace(ws.id, atSortOrder: 0)
+        store.redockBubble(ws.id, atSortOrder: 0)
         manager.refresh()
 
         XCTAssertFalse(manager.hasPanel(for: ws.id))
     }
 
     func test_duplicate_show_does_not_create_second_panel() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "A", docked: false)
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A", docked: false)
         let manager = FloatingBubbleManager(store: store, headless: true)
 
         manager.showFloatingBubble(for: ws)
@@ -1075,13 +1075,13 @@ final class AppWiringTests: XCTestCase {
 
     func test_recall_all_redocks_and_refreshes() {
         let delegate = AppDelegate(); do { delegate.headless = true }
-        let a = makeWorkspace(name: "A", docked: false)
-        delegate.store.config.workspaces = [a]
+        let a = makeBubble(name: "A", docked: false)
+        delegate.store.config.bubbles = [a]
         delegate.floatingManager.showFloatingBubble(for: a)
 
         delegate.recallAll()
 
-        XCTAssertTrue(delegate.store.workspaces.allSatisfy(\.docked))
+        XCTAssertTrue(delegate.store.bubbles.allSatisfy(\.docked))
         XCTAssertFalse(delegate.floatingManager.hasPanel(for: a.id))
     }
 }
@@ -1120,8 +1120,8 @@ final class AppLaunchBehaviorTests: XCTestCase {
 
     func test_launch_restores_floating_bubbles() async {
         let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeWorkspace(name: "Float", docked: false, floatingPosition: CodablePoint(x: 50, y: 50))
-        delegate.store.config.workspaces = [ws]
+        let ws = makeBubble(name: "Float", docked: false, floatingPosition: CodablePoint(x: 50, y: 50))
+        delegate.store.config.bubbles = [ws]
         let fake = FakeBridge()
         await delegate.launch(bridge: fake)
 
@@ -1133,8 +1133,8 @@ final class AppLaunchBehaviorTests: XCTestCase {
 final class SidebarContentBehaviorTests: XCTestCase {
 
     func test_sidebar_panel_has_content_view_after_show() {
-        let store = WorkspaceStore()
-        store.config.workspaces = [makeWorkspace(name: "A", docked: true)]
+        let store = BubbleStore()
+        store.config.bubbles = [makeBubble(name: "A", docked: true)]
         let controller = SidebarPanelController(store: store, headless: true)
         controller.show()
 
@@ -1147,9 +1147,9 @@ final class SidebarContentBehaviorTests: XCTestCase {
 final class FloatingBubbleRedockBehaviorTests: XCTestCase {
 
     func test_floating_panel_has_redock_callback() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "A", docked: false)
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A", docked: false)
+        store.config.bubbles = [ws]
         let manager = FloatingBubbleManager(store: store, headless: true)
 
         var redockCalled = false
@@ -1163,36 +1163,36 @@ final class FloatingBubbleRedockBehaviorTests: XCTestCase {
 @MainActor
 final class FocusTrackingBehaviorTests: XCTestCase {
 
-    func test_focus_event_updates_focused_workspace_id() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "Active", itermWindowId: "pty-42")
-        store.config.workspaces = [ws]
+    func test_focus_event_updates_focused_bubble_id() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Active", itermWindowId: "pty-42")
+        store.config.bubbles = [ws]
 
         store.handleFocusEvent(FocusEvent(kind: .window, windowId: "pty-42"))
 
-        XCTAssertEqual(store.focusedWorkspaceId, ws.id)
+        XCTAssertEqual(store.focusedBubbleId, ws.id)
     }
 
     func test_focus_event_for_unknown_window_clears_focus() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
-        store.config.workspaces = [ws]
-        store.focusedWorkspaceId = ws.id
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A", itermWindowId: "pty-1")
+        store.config.bubbles = [ws]
+        store.focusedBubbleId = ws.id
 
         store.handleFocusEvent(FocusEvent(kind: .window, windowId: "pty-unknown"))
 
-        XCTAssertNil(store.focusedWorkspaceId)
+        XCTAssertNil(store.focusedBubbleId)
     }
 
     func test_non_window_focus_event_does_not_change_focus() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
-        store.config.workspaces = [ws]
-        store.focusedWorkspaceId = ws.id
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A", itermWindowId: "pty-1")
+        store.config.bubbles = [ws]
+        store.focusedBubbleId = ws.id
 
         store.handleFocusEvent(FocusEvent(kind: .tab, tabId: "tab-99"))
 
-        XCTAssertEqual(store.focusedWorkspaceId, ws.id)
+        XCTAssertEqual(store.focusedBubbleId, ws.id)
     }
 }
 
@@ -1236,8 +1236,8 @@ final class MenuBarContentBehaviorTests: XCTestCase {
 final class BubbleViewBehaviorTests: XCTestCase {
 
     func test_bubble_view_can_be_created() {
-        let ws = makeWorkspace(name: "Test")
-        let _ = BubbleView(workspace: ws, state: .active, onTap: {})
+        let ws = makeBubble(name: "Test")
+        let _ = BubbleView(bubble: ws, state: .active, onTap: {})
     }
 
     func test_color_from_hex_creates_valid_color() {
@@ -1249,21 +1249,21 @@ final class BubbleViewBehaviorTests: XCTestCase {
 @MainActor
 final class DragUndockBehaviorTests: XCTestCase {
 
-    func test_completing_drag_outside_sidebar_undocks_workspace_and_shows_floating_panel() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "Dragged", docked: true)
-        store.config.workspaces = [ws]
+    func test_completing_drag_outside_sidebar_undocks_bubble_and_shows_floating_panel() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Dragged", docked: true)
+        store.config.bubbles = [ws]
 
         let sidebarController = SidebarPanelController(store: store, headless: true)
         sidebarController.show()
         let floatingManager = FloatingBubbleManager(store: store, headless: true)
 
         var machine = BubbleDragStateMachine()
-        machine.dragChanged(workspaceId: ws.id, translation: CGSize(width: 10, height: 0))
-        machine.dragChanged(workspaceId: ws.id, translation: CGSize(width: 25, height: 0))
+        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 10, height: 0))
+        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 25, height: 0))
 
         guard let draggedId = machine.dragEnded() else {
-            XCTFail("Expected active drag to return workspace ID")
+            XCTFail("Expected active drag to return bubble ID")
             return
         }
 
@@ -1274,27 +1274,27 @@ final class DragUndockBehaviorTests: XCTestCase {
         }
 
         if !dockZone.contains(dropPoint) {
-            store.undockWorkspace(draggedId, position: dropPoint)
-            if let workspace = store.workspaces.first(where: { $0.id == draggedId }) {
-                floatingManager.showFloatingBubble(for: workspace)
+            store.undockBubble(draggedId, position: dropPoint)
+            if let bubble = store.bubbles.first(where: { $0.id == draggedId }) {
+                floatingManager.showFloatingBubble(for: bubble)
             }
         }
 
-        XCTAssertFalse(store.workspaces.first!.docked)
+        XCTAssertFalse(store.bubbles.first!.docked)
         XCTAssertTrue(floatingManager.hasPanel(for: ws.id))
     }
 
-    func test_completing_drag_inside_sidebar_keeps_workspace_docked() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "Kept", docked: true)
-        store.config.workspaces = [ws]
+    func test_completing_drag_inside_sidebar_keeps_bubble_docked() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Kept", docked: true)
+        store.config.bubbles = [ws]
 
         let sidebarController = SidebarPanelController(store: store, headless: true)
         sidebarController.show()
 
         var machine = BubbleDragStateMachine()
-        machine.dragChanged(workspaceId: ws.id, translation: CGSize(width: 10, height: 0))
-        machine.dragChanged(workspaceId: ws.id, translation: CGSize(width: 25, height: 0))
+        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 10, height: 0))
+        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 25, height: 0))
         let draggedId = machine.dragEnded()
 
         XCTAssertNotNil(draggedId)
@@ -1306,7 +1306,7 @@ final class DragUndockBehaviorTests: XCTestCase {
             }
         }
 
-        XCTAssertTrue(store.workspaces.first!.docked)
+        XCTAssertTrue(store.bubbles.first!.docked)
     }
 }
 
@@ -1314,9 +1314,9 @@ final class DragUndockBehaviorTests: XCTestCase {
 final class DragRedockBehaviorTests: XCTestCase {
 
     func test_floating_bubble_dropped_over_sidebar_redocks() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "Floating", docked: false, floatingPosition: CodablePoint(x: 200, y: 300))
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Floating", docked: false, floatingPosition: CodablePoint(x: 200, y: 300))
+        store.config.bubbles = [ws]
 
         let sidebarController = SidebarPanelController(store: store, headless: true)
         sidebarController.show()
@@ -1331,15 +1331,15 @@ final class DragRedockBehaviorTests: XCTestCase {
             if dockZone.contains(dropCenter) {
                 let sortOrder = dockZone.insertionIndex(
                     at: dropCenter,
-                    bubbleCount: store.workspaces.filter(\.docked).count
+                    bubbleCount: store.bubbles.filter(\.docked).count
                 )
-                store.redockWorkspace(ws.id, atSortOrder: sortOrder)
+                store.redockBubble(ws.id, atSortOrder: sortOrder)
                 floatingManager.hideFloatingBubble(for: ws.id)
             }
         }
 
-        XCTAssertTrue(store.workspaces.first!.docked)
-        XCTAssertNil(store.workspaces.first!.floatingPosition)
+        XCTAssertTrue(store.bubbles.first!.docked)
+        XCTAssertNil(store.bubbles.first!.floatingPosition)
         XCTAssertFalse(floatingManager.hasPanel(for: ws.id))
     }
 }
@@ -1348,20 +1348,20 @@ final class DragRedockBehaviorTests: XCTestCase {
 final class BubbleListViewBehaviorTests: XCTestCase {
 
     func test_bubble_list_view_can_be_created_with_store() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let view = BubbleListView(store: store)
         XCTAssertNotNil(view)
     }
 
-    func test_docked_workspaces_filter_is_correct() {
-        let store = WorkspaceStore()
-        store.config.workspaces = [
-            makeWorkspace(name: "Docked1", sortOrder: 1, docked: true),
-            makeWorkspace(name: "Floating", sortOrder: 2, docked: false),
-            makeWorkspace(name: "Docked0", sortOrder: 0, docked: true),
+    func test_docked_bubbles_filter_is_correct() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "Docked1", sortOrder: 1, docked: true),
+            makeBubble(name: "Floating", sortOrder: 2, docked: false),
+            makeBubble(name: "Docked0", sortOrder: 0, docked: true),
         ]
 
-        let docked = store.workspaces.filter(\.docked).sorted { $0.sortOrder < $1.sortOrder }
+        let docked = store.bubbles.filter(\.docked).sorted { $0.sortOrder < $1.sortOrder }
 
         XCTAssertEqual(docked.count, 2)
         XCTAssertEqual(docked[0].name, "Docked0")
@@ -1373,29 +1373,29 @@ final class BubbleListViewBehaviorTests: XCTestCase {
 final class QuickAddViewBehaviorTests: XCTestCase {
 
     func test_quick_add_view_can_be_created() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let binding = Binding.constant(true)
         let view = QuickAddView(store: store, isPresented: binding)
         XCTAssertNotNil(view)
     }
 
-    func test_creating_workspace_from_template_uses_template_tabs() async {
-        let store = WorkspaceStore()
+    func test_creating_bubble_from_template_uses_template_tabs() async {
+        let store = BubbleStore()
         let fake = FakeBridge()
         await fake.setCallResult("create_window", value: ["window_id": "pty-tmpl"])
         await store.connectBridge(fake)
 
-        let template = WorkspaceTemplate.webDev
-        await store.createWorkspace(
+        let template = BubbleTemplate.webDev
+        await store.createBubble(
             name: template.name,
             color: "#4A90D9",
             icon: template.icon,
             tabs: template.tabs
         )
 
-        XCTAssertEqual(store.workspaces.count, 1)
-        XCTAssertEqual(store.workspaces.first?.tabs.count, template.tabs.count)
-        XCTAssertEqual(store.workspaces.first?.name, "Web Dev")
+        XCTAssertEqual(store.bubbles.count, 1)
+        XCTAssertEqual(store.bubbles.first?.tabs.count, template.tabs.count)
+        XCTAssertEqual(store.bubbles.first?.name, "Web Dev")
     }
 }
 
@@ -1403,19 +1403,19 @@ final class QuickAddViewBehaviorTests: XCTestCase {
 final class SettingsViewBehaviorTests: XCTestCase {
 
     func test_settings_view_can_be_created() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let view = SettingsView(store: store)
         XCTAssertNotNil(view)
     }
 
     func test_hotkey_config_changes_persist_in_store() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         store.config.hotkeys.toggleSidebar = "Cmd+Shift+X"
         XCTAssertEqual(store.config.hotkeys.toggleSidebar, "Cmd+Shift+X")
     }
 
     func test_sidebar_width_changes_persist_in_store() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         store.config.sidebar.width = 96
         XCTAssertEqual(store.config.sidebar.width, 96)
     }
@@ -1426,20 +1426,20 @@ final class AppDragWiringTests: XCTestCase {
 
     func test_handle_drag_undock_creates_floating_panel() {
         let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeWorkspace(name: "Drag", docked: true)
-        delegate.store.config.workspaces = [ws]
+        let ws = makeBubble(name: "Drag", docked: true)
+        delegate.store.config.bubbles = [ws]
         delegate.sidebarController.show()
 
-        delegate.handleDragUndock(workspaceId: ws.id, screenPoint: CGPoint(x: 300, y: 400))
+        delegate.handleDragUndock(bubbleId: ws.id, screenPoint: CGPoint(x: 300, y: 400))
 
-        XCTAssertFalse(delegate.store.workspaces.first!.docked)
+        XCTAssertFalse(delegate.store.bubbles.first!.docked)
         XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
     }
 
     func test_handle_redock_check_redocks_when_over_sidebar() {
         let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeWorkspace(name: "Float", docked: false)
-        delegate.store.config.workspaces = [ws]
+        let ws = makeBubble(name: "Float", docked: false)
+        delegate.store.config.bubbles = [ws]
         delegate.sidebarController.show()
         delegate.floatingManager.showFloatingBubble(for: ws)
 
@@ -1454,23 +1454,23 @@ final class AppDragWiringTests: XCTestCase {
             width: 72,
             height: 80
         )
-        delegate.handleRedockCheck(workspaceId: ws.id, panelFrame: overSidebar)
+        delegate.handleRedockCheck(bubbleId: ws.id, panelFrame: overSidebar)
 
-        XCTAssertTrue(delegate.store.workspaces.first!.docked)
+        XCTAssertTrue(delegate.store.bubbles.first!.docked)
         XCTAssertFalse(delegate.floatingManager.hasPanel(for: ws.id))
     }
 
     func test_handle_redock_check_ignores_when_not_over_sidebar() {
         let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeWorkspace(name: "Float", docked: false)
-        delegate.store.config.workspaces = [ws]
+        let ws = makeBubble(name: "Float", docked: false)
+        delegate.store.config.bubbles = [ws]
         delegate.sidebarController.show()
         delegate.floatingManager.showFloatingBubble(for: ws)
 
         let farAway = NSRect(x: 500, y: 500, width: 72, height: 80)
-        delegate.handleRedockCheck(workspaceId: ws.id, panelFrame: farAway)
+        delegate.handleRedockCheck(bubbleId: ws.id, panelFrame: farAway)
 
-        XCTAssertFalse(delegate.store.workspaces.first!.docked)
+        XCTAssertFalse(delegate.store.bubbles.first!.docked)
         XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
     }
 }
@@ -1479,25 +1479,25 @@ final class AppDragWiringTests: XCTestCase {
 final class WindowLivenessBehaviorTests: XCTestCase {
 
     func test_refresh_clears_stale_window_ids() {
-        let store = WorkspaceStore()
-        var ws = makeWorkspace(name: "Stale", itermWindowId: "pty-gone")
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        var ws = makeBubble(name: "Stale", itermWindowId: "pty-gone")
+        store.config.bubbles = [ws]
 
         let activeWindowIds: Set<String> = ["pty-other"]
         store.refreshWindowLiveness(activeWindowIds: activeWindowIds)
 
-        XCTAssertTrue(store.workspaces.isEmpty, "Bubble with dead window should be removed")
+        XCTAssertTrue(store.bubbles.isEmpty, "Bubble with dead window should be removed")
     }
 
     func test_refresh_keeps_active_window_ids() {
-        let store = WorkspaceStore()
-        var ws = makeWorkspace(name: "Active", itermWindowId: "pty-alive")
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        var ws = makeBubble(name: "Active", itermWindowId: "pty-alive")
+        store.config.bubbles = [ws]
 
         let activeWindowIds: Set<String> = ["pty-alive", "pty-other"]
         store.refreshWindowLiveness(activeWindowIds: activeWindowIds)
 
-        XCTAssertEqual(store.workspaces.first!.itermWindowId, "pty-alive")
+        XCTAssertEqual(store.bubbles.first!.itermWindowId, "pty-alive")
     }
 }
 
@@ -1505,9 +1505,9 @@ final class WindowLivenessBehaviorTests: XCTestCase {
 final class WindowPollingBehaviorTests: XCTestCase {
 
     func test_poll_windows_updates_liveness() async {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A", itermWindowId: "pty-1")
+        store.config.bubbles = [ws]
 
         let fake = FakeBridge()
         await fake.setCallResult("list_windows", value: [
@@ -1517,13 +1517,13 @@ final class WindowPollingBehaviorTests: XCTestCase {
 
         await store.pollWindowLiveness()
 
-        XCTAssertTrue(store.workspaces.isEmpty, "Bubble with dead window should be removed")
+        XCTAssertTrue(store.bubbles.isEmpty, "Bubble with dead window should be removed")
     }
 
     func test_poll_windows_keeps_live_windows() async {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A", itermWindowId: "pty-1")
+        store.config.bubbles = [ws]
 
         let fake = FakeBridge()
         await fake.setCallResult("list_windows", value: [
@@ -1533,13 +1533,13 @@ final class WindowPollingBehaviorTests: XCTestCase {
 
         await store.pollWindowLiveness()
 
-        XCTAssertEqual(store.workspaces.first!.itermWindowId, "pty-1")
+        XCTAssertEqual(store.bubbles.first!.itermWindowId, "pty-1")
     }
 
     func test_poll_windows_handles_bridge_error_gracefully() async {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A", itermWindowId: "pty-1")
+        store.config.bubbles = [ws]
 
         let fake = FakeBridge()
         await fake.setShouldThrow(true)
@@ -1549,7 +1549,7 @@ final class WindowPollingBehaviorTests: XCTestCase {
 
         await store.pollWindowLiveness()
 
-        XCTAssertEqual(store.workspaces.first!.itermWindowId, "pty-1")
+        XCTAssertEqual(store.bubbles.first!.itermWindowId, "pty-1")
     }
 }
 
@@ -1557,9 +1557,9 @@ final class WindowPollingBehaviorTests: XCTestCase {
 final class FloatingPanelContentBehaviorTests: XCTestCase {
 
     func test_floating_panel_has_bubble_content() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "Content", color: "#FF0000", icon: "terminal", docked: false)
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Content", color: "#FF0000", icon: "terminal", docked: false)
+        store.config.bubbles = [ws]
         let manager = FloatingBubbleManager(store: store, headless: true)
 
         manager.showFloatingBubble(for: ws)
@@ -1573,15 +1573,15 @@ final class FloatingPanelContentBehaviorTests: XCTestCase {
 final class FloatingPanelRedockWiringTests: XCTestCase {
 
     func test_floating_panel_mouseup_calls_redock_check() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "A", docked: false)
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A", docked: false)
+        store.config.bubbles = [ws]
         let manager = FloatingBubbleManager(store: store, headless: true)
 
-        var receivedWorkspaceId: String?
+        var receivedBubbleId: String?
         var receivedFrame: NSRect?
         manager.onRedockCheck = { id, frame in
-            receivedWorkspaceId = id
+            receivedBubbleId = id
             receivedFrame = frame
         }
 
@@ -1589,7 +1589,7 @@ final class FloatingPanelRedockWiringTests: XCTestCase {
 
         manager.simulateMouseUp(for: ws.id)
 
-        XCTAssertEqual(receivedWorkspaceId, ws.id)
+        XCTAssertEqual(receivedBubbleId, ws.id)
         XCTAssertNotNil(receivedFrame)
     }
 }
@@ -1599,16 +1599,16 @@ final class SidebarDragCallbackTests: XCTestCase {
 
     func test_app_delegate_wires_drag_undock_on_launch() async {
         let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeWorkspace(name: "Drag", docked: true)
-        delegate.store.config.workspaces = [ws]
+        let ws = makeBubble(name: "Drag", docked: true)
+        delegate.store.config.bubbles = [ws]
         delegate.store.config.sidebar.visible = true
 
         let fake = FakeBridge()
         await delegate.launch(bridge: fake)
 
-        delegate.handleDragUndock(workspaceId: ws.id, screenPoint: CGPoint(x: 300, y: 300))
+        delegate.handleDragUndock(bubbleId: ws.id, screenPoint: CGPoint(x: 300, y: 300))
 
-        XCTAssertFalse(delegate.store.workspaces.first!.docked)
+        XCTAssertFalse(delegate.store.bubbles.first!.docked)
         XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
     }
 }
@@ -1622,11 +1622,11 @@ final class SettingsSaveBehaviorTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let url = tempDir.appendingPathComponent("workspaces.json")
 
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         store.config.sidebar.width = 96
         store.saveConfig(to: url)
 
-        let store2 = WorkspaceStore()
+        let store2 = BubbleStore()
         store2.loadConfig(from: url)
         XCTAssertEqual(store2.config.sidebar.width, 96)
     }
@@ -1637,11 +1637,11 @@ final class SettingsSaveBehaviorTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: tempDir) }
         let url = tempDir.appendingPathComponent("workspaces.json")
 
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         store.config.hotkeys.toggleSidebar = "Cmd+Shift+X"
         store.saveConfig(to: url)
 
-        let store2 = WorkspaceStore()
+        let store2 = BubbleStore()
         store2.loadConfig(from: url)
         XCTAssertEqual(store2.config.hotkeys.toggleSidebar, "Cmd+Shift+X")
     }
@@ -1683,8 +1683,8 @@ final class SidebarDragFlowTests: XCTestCase {
 
     func test_full_undock_flow_via_app_delegate() async {
         let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeWorkspace(name: "Undock", docked: true)
-        delegate.store.config.workspaces = [ws]
+        let ws = makeBubble(name: "Undock", docked: true)
+        delegate.store.config.bubbles = [ws]
         delegate.store.config.sidebar.visible = true
 
         let fake = FakeBridge()
@@ -1692,27 +1692,27 @@ final class SidebarDragFlowTests: XCTestCase {
         await delegate.launch(bridge: fake)
 
         var machine = BubbleDragStateMachine()
-        machine.dragChanged(workspaceId: ws.id, translation: CGSize(width: 10, height: 0))
-        machine.dragChanged(workspaceId: ws.id, translation: CGSize(width: 25, height: 0))
+        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 10, height: 0))
+        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 25, height: 0))
         guard let draggedId = machine.dragEnded() else {
             XCTFail("Expected active drag")
             return
         }
 
-        delegate.handleDragUndock(workspaceId: draggedId, screenPoint: CGPoint(x: 300, y: 400))
+        delegate.handleDragUndock(bubbleId: draggedId, screenPoint: CGPoint(x: 300, y: 400))
 
-        XCTAssertFalse(delegate.store.workspaces.first!.docked)
+        XCTAssertFalse(delegate.store.bubbles.first!.docked)
         XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
 
         delegate.recallAll()
-        XCTAssertTrue(delegate.store.workspaces.first!.docked)
+        XCTAssertTrue(delegate.store.bubbles.first!.docked)
         XCTAssertFalse(delegate.floatingManager.hasPanel(for: ws.id))
     }
 
     func test_full_redock_flow_via_floating_panel() async {
         let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeWorkspace(name: "Redock", docked: false, floatingPosition: CodablePoint(x: 200, y: 200))
-        delegate.store.config.workspaces = [ws]
+        let ws = makeBubble(name: "Redock", docked: false, floatingPosition: CodablePoint(x: 200, y: 200))
+        delegate.store.config.bubbles = [ws]
         delegate.store.config.sidebar.visible = true
 
         let fake = FakeBridge()
@@ -1731,9 +1731,9 @@ final class SidebarDragFlowTests: XCTestCase {
             width: 72,
             height: 80
         )
-        delegate.handleRedockCheck(workspaceId: ws.id, panelFrame: overSidebar)
+        delegate.handleRedockCheck(bubbleId: ws.id, panelFrame: overSidebar)
 
-        XCTAssertTrue(delegate.store.workspaces.first!.docked)
+        XCTAssertTrue(delegate.store.bubbles.first!.docked)
         XCTAssertFalse(delegate.floatingManager.hasPanel(for: ws.id))
     }
 }
@@ -1742,7 +1742,7 @@ final class SidebarDragFlowTests: XCTestCase {
 final class SidebarDragCallbackWiringTests: XCTestCase {
 
     func test_sidebar_controller_accepts_drag_callbacks() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let controller = SidebarPanelController(store: store, headless: true)
 
         var receivedId: String?
@@ -1756,7 +1756,7 @@ final class SidebarDragCallbackWiringTests: XCTestCase {
     }
 
     func test_sidebar_controller_accepts_drag_ended_callback() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let controller = SidebarPanelController(store: store, headless: true)
 
         var endedId: String?
@@ -1810,16 +1810,16 @@ final class BridgeScriptBundlingTests: XCTestCase {
 @MainActor
 final class SavePositionsBehaviorTests: XCTestCase {
 
-    func test_save_positions_updates_floating_workspace_positions() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "Float", docked: false, floatingPosition: CodablePoint(x: 100, y: 100))
-        store.config.workspaces = [ws]
+    func test_save_positions_updates_floating_bubble_positions() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Float", docked: false, floatingPosition: CodablePoint(x: 100, y: 100))
+        store.config.bubbles = [ws]
         let manager = FloatingBubbleManager(store: store, headless: true)
         manager.showFloatingBubble(for: ws)
 
         manager.savePositions()
 
-        let saved = store.workspaces.first!.floatingPosition
+        let saved = store.bubbles.first!.floatingPosition
         XCTAssertNotNil(saved)
     }
 }
@@ -1828,16 +1828,16 @@ final class SavePositionsBehaviorTests: XCTestCase {
 final class PanelResizeMathTests: XCTestCase {
 
     func test_sidebar_panel_height_grows_with_bubbles() {
-        let store = WorkspaceStore()
-        store.config.workspaces = [
-            makeWorkspace(name: "A", docked: true),
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", docked: true),
         ]
         let controller = SidebarPanelController(store: store, headless: true)
         controller.show()
         let oneHeight = controller.panelFrame!.height
 
-        store.config.workspaces.append(makeWorkspace(name: "B", docked: true))
-        store.config.workspaces.append(makeWorkspace(name: "C", docked: true))
+        store.config.bubbles.append(makeBubble(name: "B", docked: true))
+        store.config.bubbles.append(makeBubble(name: "C", docked: true))
         controller.refresh()
         let threeHeight = controller.panelFrame!.height
 
@@ -1845,7 +1845,7 @@ final class PanelResizeMathTests: XCTestCase {
     }
 
     func test_sidebar_panel_has_minimum_height_with_zero_bubbles() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let controller = SidebarPanelController(store: store, headless: true)
         controller.show()
 
@@ -1881,8 +1881,8 @@ final class HotkeyReregistrationTests: XCTestCase {
 @MainActor
 final class CaptureCurrentWindowTests: XCTestCase {
 
-    func test_capture_creates_workspace_from_window_info() async {
-        let store = WorkspaceStore()
+    func test_capture_creates_bubble_from_window_info() async {
+        let store = BubbleStore()
         let fake = FakeBridge()
         // Simulate bridge returning active window info
         await fake.setCallResult("get_active_window", value: [
@@ -1896,15 +1896,15 @@ final class CaptureCurrentWindowTests: XCTestCase {
 
         await store.captureCurrentWindow(name: "Captured", color: "#FF6B6B", icon: "star")
 
-        XCTAssertEqual(store.workspaces.count, 1)
-        let ws = store.workspaces.first!
+        XCTAssertEqual(store.bubbles.count, 1)
+        let ws = store.bubbles.first!
         XCTAssertEqual(ws.name, "Captured")
         XCTAssertEqual(ws.itermWindowId, "pty-capture")
         XCTAssertEqual(ws.tabs.count, 2)
     }
 
     func test_capture_with_no_active_window_does_nothing() async {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let fake = FakeBridge()
         await fake.setShouldThrow(true)
         await store.connectBridge(fake)
@@ -1913,7 +1913,7 @@ final class CaptureCurrentWindowTests: XCTestCase {
 
         await store.captureCurrentWindow(name: "Fail", color: "#000", icon: "star")
 
-        XCTAssertTrue(store.workspaces.isEmpty)
+        XCTAssertTrue(store.bubbles.isEmpty)
     }
 }
 
@@ -1923,7 +1923,7 @@ final class CaptureCurrentWindowTests: XCTestCase {
 final class BridgeErrorStateTests: XCTestCase {
 
     func test_store_tracks_iterm2_running_state() async {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let fake = FakeBridge()
         await fake.setCallResult("list_windows", value: [
             ["window_id": "pty-1", "tabs": []] as [String: Any]
@@ -1936,7 +1936,7 @@ final class BridgeErrorStateTests: XCTestCase {
     }
 
     func test_store_detects_iterm2_unreachable() async {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let fake = FakeBridge()
         await store.connectBridge(fake)
         await fake.setShouldThrow(true)
@@ -1947,7 +1947,7 @@ final class BridgeErrorStateTests: XCTestCase {
     }
 
     func test_bridge_not_connected_shows_in_store() {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         XCTAssertFalse(store.bridgeConnected)
     }
 }
@@ -1970,8 +1970,8 @@ final class MenuBarCaptureActionTests: XCTestCase {
 
         await delegate.captureCurrentWindow()
 
-        XCTAssertEqual(delegate.store.workspaces.count, 1)
-        XCTAssertEqual(delegate.store.workspaces.first?.itermWindowId, "pty-cap")
+        XCTAssertEqual(delegate.store.bubbles.count, 1)
+        XCTAssertEqual(delegate.store.bubbles.first?.itermWindowId, "pty-cap")
     }
 }
 
@@ -1990,13 +1990,13 @@ final class UIErrorStateTests: XCTestCase {
         XCTAssertTrue(delegate.store.bridgeConnected)
     }
 
-    func test_workspace_bubbles_dormant_when_iterm2_unreachable() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "A", itermWindowId: "pty-1")
-        store.config.workspaces = [ws]
+    func test_bubble_bubbles_dormant_when_iterm2_unreachable() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A", itermWindowId: "pty-1")
+        store.config.bubbles = [ws]
         store.iTerm2Reachable = false
 
-        // Even with a window ID, the workspace appears active
+        // Even with a window ID, the bubble appears active
         // (iTerm2Reachable is informational, doesn't override bubble state)
         XCTAssertEqual(store.bubbleState(for: ws), .active)
     }
@@ -2019,49 +2019,49 @@ final class AccessibilityPermissionTests: XCTestCase {
     }
 }
 
-// MARK: - Rename Workspace
+// MARK: - Rename Bubble
 
 @MainActor
-final class RenameWorkspaceTests: XCTestCase {
+final class RenameBubbleTests: XCTestCase {
 
-    func test_rename_workspace_changes_name() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "Old")
-        store.config.workspaces = [ws]
+    func test_rename_bubble_changes_name() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Old")
+        store.config.bubbles = [ws]
 
-        store.renameWorkspace(ws.id, to: "New")
+        store.renameBubble(ws.id, to: "New")
 
-        XCTAssertEqual(store.workspaces.first?.name, "New")
+        XCTAssertEqual(store.bubbles.first?.name, "New")
     }
 
-    func test_rename_nonexistent_workspace_is_noop() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "A")
-        store.config.workspaces = [ws]
+    func test_rename_nonexistent_bubble_is_noop() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A")
+        store.config.bubbles = [ws]
 
-        store.renameWorkspace("bogus-id", to: "New")
+        store.renameBubble("bogus-id", to: "New")
 
-        XCTAssertEqual(store.workspaces.first?.name, "A")
+        XCTAssertEqual(store.bubbles.first?.name, "A")
     }
 
     func test_rename_trims_whitespace() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "Old")
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Old")
+        store.config.bubbles = [ws]
 
-        store.renameWorkspace(ws.id, to: "  New Name  ")
+        store.renameBubble(ws.id, to: "  New Name  ")
 
-        XCTAssertEqual(store.workspaces.first?.name, "New Name")
+        XCTAssertEqual(store.bubbles.first?.name, "New Name")
     }
 
     func test_rename_empty_string_keeps_old_name() {
-        let store = WorkspaceStore()
-        let ws = makeWorkspace(name: "Keep")
-        store.config.workspaces = [ws]
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Keep")
+        store.config.bubbles = [ws]
 
-        store.renameWorkspace(ws.id, to: "   ")
+        store.renameBubble(ws.id, to: "   ")
 
-        XCTAssertEqual(store.workspaces.first?.name, "Keep")
+        XCTAssertEqual(store.bubbles.first?.name, "Keep")
     }
 }
 
@@ -2071,7 +2071,7 @@ final class RenameWorkspaceTests: XCTestCase {
 final class CaptureAutoNameTests: XCTestCase {
 
     func test_capture_uses_first_session_name_when_no_name_given() async {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let fake = FakeBridge()
         await fake.setCallResult("get_active_window", value: [
             "window_id": "pty-auto",
@@ -2083,11 +2083,11 @@ final class CaptureAutoNameTests: XCTestCase {
 
         await store.captureCurrentWindow(name: nil, color: "#4A90D9", icon: "terminal")
 
-        XCTAssertEqual(store.workspaces.first?.name, "~/projects/backend")
+        XCTAssertEqual(store.bubbles.first?.name, "~/projects/backend")
     }
 
     func test_capture_with_explicit_name_uses_it() async {
-        let store = WorkspaceStore()
+        let store = BubbleStore()
         let fake = FakeBridge()
         await fake.setCallResult("get_active_window", value: [
             "window_id": "pty-named",
@@ -2099,7 +2099,7 @@ final class CaptureAutoNameTests: XCTestCase {
 
         await store.captureCurrentWindow(name: "MyName", color: "#4A90D9", icon: "terminal")
 
-        XCTAssertEqual(store.workspaces.first?.name, "MyName")
+        XCTAssertEqual(store.bubbles.first?.name, "MyName")
     }
 }
 
@@ -2135,5 +2135,407 @@ final class AnyCodableEdgeCaseTests: XCTestCase {
         let decoded = try JSONDecoder().decode(AnyCodable.self, from: data)
         let decodedValue = try XCTUnwrap(decoded.value as? Double)
         XCTAssertEqual(decodedValue, 3.14, accuracy: 0.001)
+    }
+}
+
+// MARK: - Bubble Selection (Keyboard Navigation)
+
+@MainActor
+final class BubbleSelectionTests: XCTestCase {
+
+    func test_selected_bubble_index_starts_nil() {
+        let store = BubbleStore()
+        XCTAssertNil(store.selectedBubbleIndex)
+    }
+
+    func test_select_next_bubble_from_nil_selects_first() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+        ]
+        store.selectNextBubble()
+        XCTAssertEqual(store.selectedBubbleIndex, 0)
+    }
+
+    func test_select_next_bubble_advances_index() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+        ]
+        store.selectedBubbleIndex = 0
+        store.selectNextBubble()
+        XCTAssertEqual(store.selectedBubbleIndex, 1)
+    }
+
+    func test_select_next_bubble_wraps_around() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+        ]
+        store.selectedBubbleIndex = 1
+        store.selectNextBubble()
+        XCTAssertEqual(store.selectedBubbleIndex, 0)
+    }
+
+    func test_select_previous_bubble_from_nil_selects_last() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+        ]
+        store.selectPreviousBubble()
+        XCTAssertEqual(store.selectedBubbleIndex, 1)
+    }
+
+    func test_select_previous_bubble_decrements_index() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+        ]
+        store.selectedBubbleIndex = 1
+        store.selectPreviousBubble()
+        XCTAssertEqual(store.selectedBubbleIndex, 0)
+    }
+
+    func test_select_previous_bubble_wraps_around() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+        ]
+        store.selectedBubbleIndex = 0
+        store.selectPreviousBubble()
+        XCTAssertEqual(store.selectedBubbleIndex, 1)
+    }
+
+    func test_select_bubble_by_valid_index() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+            makeBubble(name: "C", sortOrder: 2, docked: true),
+        ]
+        store.selectBubbleByIndex(2)
+        XCTAssertEqual(store.selectedBubbleIndex, 2)
+    }
+
+    func test_select_bubble_by_out_of_range_index_is_noop() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+        ]
+        store.selectBubbleByIndex(5)
+        XCTAssertNil(store.selectedBubbleIndex)
+    }
+
+    func test_select_bubble_by_negative_index_is_noop() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+        ]
+        store.selectBubbleByIndex(-1)
+        XCTAssertNil(store.selectedBubbleIndex)
+    }
+
+    func test_clear_bubble_selection() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+        ]
+        store.selectedBubbleIndex = 0
+        store.clearBubbleSelection()
+        XCTAssertNil(store.selectedBubbleIndex)
+    }
+
+    func test_select_next_with_no_docked_bubbles_is_noop() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: false),
+        ]
+        store.selectNextBubble()
+        XCTAssertNil(store.selectedBubbleIndex)
+    }
+
+    func test_select_previous_with_no_docked_bubbles_is_noop() {
+        let store = BubbleStore()
+        store.selectPreviousBubble()
+        XCTAssertNil(store.selectedBubbleIndex)
+    }
+
+    func test_select_next_only_counts_docked_bubbles() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "Floating", sortOrder: 1, docked: false),
+            makeBubble(name: "B", sortOrder: 2, docked: true),
+        ]
+        store.selectedBubbleIndex = 0
+        store.selectNextBubble()
+        XCTAssertEqual(store.selectedBubbleIndex, 1) // index 1 of docked (B)
+    }
+
+    func test_activate_selected_bubble_calls_activate_bubble() async {
+        let store = BubbleStore()
+        let fake = FakeBridge()
+        await store.connectBridge(fake)
+        let ws = makeBubble(name: "A", sortOrder: 0, itermWindowId: "pty-sel", docked: true)
+        store.config.bubbles = [ws]
+        store.selectedBubbleIndex = 0
+
+        await store.activateSelectedBubble()
+
+        let log = await fake.callLog
+        XCTAssertTrue(log.contains { $0.cmd == "activate_window" })
+    }
+
+    func test_activate_selected_bubble_with_nil_index_is_noop() async {
+        let store = BubbleStore()
+        let fake = FakeBridge()
+        await store.connectBridge(fake)
+        store.config.bubbles = [makeBubble(name: "A", sortOrder: 0, itermWindowId: "pty-1", docked: true)]
+        store.selectedBubbleIndex = nil
+
+        await store.activateSelectedBubble()
+
+        let log = await fake.callLog
+        XCTAssertFalse(log.contains { $0.cmd == "activate_window" })
+    }
+}
+
+// MARK: - Proxy Window Manager
+
+@MainActor
+final class ProxyWindowManagerTests: XCTestCase {
+
+    func test_proxy_manager_can_be_created() {
+        let store = BubbleStore()
+        let manager = ProxyWindowManager(store: store, headless: true)
+        XCTAssertNotNil(manager)
+    }
+
+    func test_proxy_refresh_tracks_docked_bubbles() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+        ]
+        let manager = ProxyWindowManager(store: store, headless: true)
+        manager.refresh()
+
+        XCTAssertEqual(manager.proxyCount, 2)
+        XCTAssertTrue(manager.hasProxy(for: store.bubbles[0].id))
+        XCTAssertTrue(manager.hasProxy(for: store.bubbles[1].id))
+    }
+
+    func test_proxy_refresh_ignores_undocked_bubbles() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "Docked", sortOrder: 0, docked: true),
+            makeBubble(name: "Floating", sortOrder: 1, docked: false),
+        ]
+        let manager = ProxyWindowManager(store: store, headless: true)
+        manager.refresh()
+
+        XCTAssertEqual(manager.proxyCount, 1)
+        XCTAssertTrue(manager.hasProxy(for: store.bubbles[0].id))
+        XCTAssertFalse(manager.hasProxy(for: store.bubbles[1].id))
+    }
+
+    func test_proxy_refresh_removes_stale_proxies() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "A", sortOrder: 0, docked: true)
+        store.config.bubbles = [ws]
+        let manager = ProxyWindowManager(store: store, headless: true)
+        manager.refresh()
+        XCTAssertEqual(manager.proxyCount, 1)
+
+        // Undock the bubble
+        store.undockBubble(ws.id, position: .zero)
+        manager.refresh()
+        XCTAssertEqual(manager.proxyCount, 0)
+    }
+
+    func test_proxy_close_all_clears_everything() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+        ]
+        let manager = ProxyWindowManager(store: store, headless: true)
+        manager.refresh()
+        XCTAssertEqual(manager.proxyCount, 2)
+
+        manager.closeAll()
+        XCTAssertEqual(manager.proxyCount, 0)
+    }
+
+    func test_proxy_refresh_is_idempotent() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+        ]
+        let manager = ProxyWindowManager(store: store, headless: true)
+        manager.refresh()
+        manager.refresh()
+        manager.refresh()
+
+        XCTAssertEqual(manager.proxyCount, 1)
+    }
+
+    func test_proxy_title_matches_bubble_name() {
+        let store = BubbleStore()
+        store.config.bubbles = [
+            makeBubble(name: "MyBubble", sortOrder: 0, docked: true),
+        ]
+        let manager = ProxyWindowManager(store: store, headless: true)
+        manager.refresh()
+
+        XCTAssertEqual(manager.proxyTitle(for: store.bubbles[0].id), "MyBubble")
+    }
+}
+
+// MARK: - HotkeyParser Function Keys
+
+final class HotkeyParserFunctionKeyTests: XCTestCase {
+
+    func test_carbon_key_code_for_f1() {
+        let code = HotkeyParser.carbonKeyCode(for: "f1")
+        XCTAssertNotNil(code)
+    }
+
+    func test_carbon_key_code_for_f9() {
+        let code = HotkeyParser.carbonKeyCode(for: "f9")
+        XCTAssertNotNil(code)
+    }
+
+    func test_carbon_key_code_for_all_function_keys() {
+        for i in 1...9 {
+            let code = HotkeyParser.carbonKeyCode(for: "f\(i)")
+            XCTAssertNotNil(code, "F\(i) should have a Carbon key code")
+        }
+    }
+
+    func test_parses_function_key_combo() {
+        let combo = HotkeyParser.parse("Cmd+F1")
+        XCTAssertNotNil(combo)
+        XCTAssertEqual(combo!.keyString, "f1")
+        XCTAssertTrue(combo!.modifiers.contains(.command))
+    }
+}
+
+// MARK: - Sidebar Keyboard Navigation Wiring
+
+@MainActor
+final class SidebarKeyboardNavigationTests: XCTestCase {
+
+    func test_app_delegate_creates_proxy_manager() async {
+        let delegate = AppDelegate(); do { delegate.headless = true }
+        let fake = FakeBridge()
+        await delegate.launch(bridge: fake)
+
+        XCTAssertNotNil(delegate.proxyManager)
+    }
+
+    func test_launch_refreshes_proxy_windows() async {
+        let delegate = AppDelegate(); do { delegate.headless = true }
+        let ws = makeBubble(name: "A", sortOrder: 0, docked: true)
+        delegate.store.config.bubbles = [ws]
+        delegate.store.config.sidebar.visible = true
+        let fake = FakeBridge()
+        await delegate.launch(bridge: fake)
+
+        XCTAssertTrue(delegate.proxyManager.hasProxy(for: ws.id))
+    }
+
+    func test_sidebar_panel_can_become_key() {
+        let store = BubbleStore()
+        store.config.bubbles = [makeBubble(name: "A", docked: true)]
+        let controller = SidebarPanelController(store: store, headless: true)
+        controller.show()
+
+        XCTAssertTrue(controller.panelCanBecomeKey)
+    }
+
+    func test_handle_sidebar_key_down_arrow_selects_next() {
+        let delegate = AppDelegate(); do { delegate.headless = true }
+        delegate.store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+        ]
+
+        delegate.handleSidebarKeyEvent(keyCode: 125, modifierFlags: []) // down arrow
+
+        XCTAssertEqual(delegate.store.selectedBubbleIndex, 0)
+    }
+
+    func test_handle_sidebar_key_up_arrow_selects_previous() {
+        let delegate = AppDelegate(); do { delegate.headless = true }
+        delegate.store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+        ]
+
+        delegate.handleSidebarKeyEvent(keyCode: 126, modifierFlags: []) // up arrow
+
+        XCTAssertEqual(delegate.store.selectedBubbleIndex, 1) // last
+    }
+
+    func test_handle_sidebar_key_return_activates_selected() async {
+        let delegate = AppDelegate(); do { delegate.headless = true }
+        let fake = FakeBridge()
+        await delegate.launch(bridge: fake)
+        let ws = makeBubble(name: "A", sortOrder: 0, itermWindowId: "pty-key", docked: true)
+        delegate.store.config.bubbles = [ws]
+        delegate.store.selectedBubbleIndex = 0
+
+        delegate.handleSidebarKeyEvent(keyCode: 36, modifierFlags: []) // return
+
+        // Give the async task a moment to complete
+        try? await Task.sleep(for: .milliseconds(50))
+        let log = await fake.callLog
+        XCTAssertTrue(log.contains { $0.cmd == "activate_window" })
+    }
+
+    func test_handle_sidebar_key_escape_clears_selection() {
+        let delegate = AppDelegate(); do { delegate.headless = true }
+        delegate.store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+        ]
+        delegate.store.selectedBubbleIndex = 0
+
+        delegate.handleSidebarKeyEvent(keyCode: 53, modifierFlags: []) // escape
+
+        XCTAssertNil(delegate.store.selectedBubbleIndex)
+    }
+
+    func test_handle_sidebar_key_fn_number_selects_by_index() {
+        let delegate = AppDelegate(); do { delegate.headless = true }
+        delegate.store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+            makeBubble(name: "C", sortOrder: 2, docked: true),
+        ]
+
+        // Fn+2 (kVK_ANSI_2 = 19, function modifier)
+        delegate.handleSidebarKeyEvent(keyCode: 19, modifierFlags: .function)
+
+        XCTAssertEqual(delegate.store.selectedBubbleIndex, 1) // 0-indexed
+    }
+
+    func test_handle_sidebar_key_f_key_selects_by_index() {
+        let delegate = AppDelegate(); do { delegate.headless = true }
+        delegate.store.config.bubbles = [
+            makeBubble(name: "A", sortOrder: 0, docked: true),
+            makeBubble(name: "B", sortOrder: 1, docked: true),
+        ]
+
+        // F1 key code = 122
+        delegate.handleSidebarKeyEvent(keyCode: 122, modifierFlags: [])
+
+        XCTAssertEqual(delegate.store.selectedBubbleIndex, 0)
     }
 }

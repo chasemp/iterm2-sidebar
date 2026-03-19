@@ -168,7 +168,9 @@ async def cmd_create_tab(connection: iterm2.Connection, args: dict) -> dict:
 
 @command("set_window_title")
 async def cmd_set_window_title(connection: iterm2.Connection, args: dict) -> dict:
-    """Set the title of all tabs in a window to propagate as the window title.
+    """Set the window title and all tab/session titles.
+
+    Uses session profile overrides to prevent the shell from resetting the title.
 
     args:
         window_id: target window
@@ -178,9 +180,48 @@ async def cmd_set_window_title(connection: iterm2.Connection, args: dict) -> dic
     title = args["title"]
     app = await iterm2.async_get_app(connection)
     window = _find_window(app, window_id)
+    # Set the window-level title
+    await window.async_set_title(title)
     for tab in window.tabs:
         await tab.async_set_title(title)
+        for session in tab.sessions:
+            # Override session name so the shell prompt doesn't reset it
+            await session.async_set_name(title)
     return {"window_id": window_id, "title": title}
+
+
+@command("set_tab_color")
+async def cmd_set_tab_color(connection: iterm2.Connection, args: dict) -> dict:
+    """Apply bubble visual identity to an iTerm2 window.
+
+    Sets tab color (visible in Minimal/Compact theme), badge text
+    (always visible as a watermark), and badge color to match.
+
+    args:
+        window_id: target window
+        hex_color: color as hex string (e.g. "#4A90D9")
+        badge_text: text to show as badge (optional, defaults to "")
+    """
+    window_id = args["window_id"]
+    hex_color = args["hex_color"].lstrip("#")
+    badge_text = args.get("badge_text", "")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    color = iterm2.Color(r, g, b)
+    app = await iterm2.async_get_app(connection)
+    window = _find_window(app, window_id)
+    for tab in window.tabs:
+        for session in tab.sessions:
+            profile = await session.async_get_profile()
+            # Tab color (visible when iTerm2 theme is Minimal/Compact)
+            await profile.async_set_tab_color(color)
+            await profile.async_set_use_tab_color(True)
+            # Badge — always visible as a watermark on the terminal
+            if badge_text:
+                await profile.async_set_badge_text(badge_text)
+                await profile.async_set_badge_color(iterm2.Color(r, g, b, 50))
+    return {"window_id": window_id, "color": f"#{hex_color}", "badge": badge_text}
 
 
 @command("minimize_window")
@@ -285,6 +326,37 @@ async def cmd_get_active_window(connection: iterm2.Connection, args: dict) -> di
         "window_id": window.window_id,
         "tabs": tabs,
     }
+
+
+@command("set_bubble_env")
+async def cmd_set_bubble_env(connection: iterm2.Connection, args: dict) -> dict:
+    """Set the STYX_BUBBLE environment variable in all sessions of a window.
+
+    Sends an export command to each session so the shell picks it up.
+    Uses a control sequence to minimize visual noise.
+
+    args:
+        window_id: target window
+        bubble_name: the bubble name to export
+    """
+    window_id = args["window_id"]
+    bubble_name = args["bubble_name"]
+    hex_color = args.get("hex_color", "")
+    # Escape single quotes in the name for shell safety
+    safe_name = bubble_name.replace("'", "'\\''")
+    safe_color = hex_color.replace("'", "")
+    app = await iterm2.async_get_app(connection)
+    window = _find_window(app, window_id)
+    for tab in window.tabs:
+        for session in tab.sessions:
+            # Use iTerm2's variable system to inject without echoing
+            await session.async_set_variable("user.styx_bubble", safe_name)
+            await session.async_set_variable("user.styx_bubble_color", safe_color)
+            # Inject env vars silently: export, then clear the line and redraw prompt
+            await session.async_send_text(
+                f" export STYX_BUBBLE='{safe_name}' STYX_BUBBLE_COLOR='{safe_color}' && clear\n"
+            )
+    return {"window_id": window_id, "bubble_name": bubble_name, "hex_color": hex_color}
 
 
 # --- Helpers ---

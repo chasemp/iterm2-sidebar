@@ -53,6 +53,9 @@ enum HotkeyParser {
             "9": kVK_ANSI_9, "0": kVK_ANSI_0,
             "tab": kVK_Tab, "space": kVK_Space, "return": kVK_Return,
             "escape": kVK_Escape, "delete": kVK_Delete,
+            "f1": kVK_F1, "f2": kVK_F2, "f3": kVK_F3,
+            "f4": kVK_F4, "f5": kVK_F5, "f6": kVK_F6,
+            "f7": kVK_F7, "f8": kVK_F8, "f9": kVK_F9,
         ]
         return map[keyString].map { UInt32($0) }
     }

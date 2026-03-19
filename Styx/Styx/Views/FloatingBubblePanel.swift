@@ -2,11 +2,11 @@ import AppKit
 import SwiftUI
 
 final class FloatingBubblePanel: NSPanel {
-    let workspaceId: String
+    let bubbleId: String
     var onMouseUp: ((String, NSRect) -> Void)?
 
-    init(workspaceId: String, position: CGPoint, contentView: NSView? = nil) {
-        self.workspaceId = workspaceId
+    init(bubbleId: String, position: CGPoint, contentView: NSView? = nil) {
+        self.bubbleId = bubbleId
         super.init(
             contentRect: NSRect(x: position.x, y: position.y, width: 72, height: 80),
             styleMask: [.nonactivatingPanel, .borderless],
@@ -32,7 +32,7 @@ final class FloatingBubblePanel: NSPanel {
 
     override func mouseUp(with event: NSEvent) {
         super.mouseUp(with: event)
-        onMouseUp?(workspaceId, frame)
+        onMouseUp?(bubbleId, frame)
     }
 
     func clampToScreen() {
@@ -49,32 +49,32 @@ final class FloatingBubblePanel: NSPanel {
 @MainActor
 final class FloatingBubbleManager {
     private var panels: [String: FloatingBubblePanel] = [:]
-    private let store: WorkspaceStore
+    private let store: BubbleStore
 
     var onRedockCheck: ((String, NSRect) -> Void)?
     private let headless: Bool
 
-    init(store: WorkspaceStore, headless: Bool = false) {
+    init(store: BubbleStore, headless: Bool = false) {
         self.store = store
         self.headless = headless
     }
 
-    func showFloatingBubble(for workspace: Workspace) {
-        guard panels[workspace.id] == nil else { return }
-        let position = workspace.floatingPosition?.cgPoint ?? CGPoint(x: 100, y: 100)
+    func showFloatingBubble(for bubble: Bubble) {
+        guard panels[bubble.id] == nil else { return }
+        let position = bubble.floatingPosition?.cgPoint ?? CGPoint(x: 100, y: 100)
 
         // Create bubble content
         let bubbleView = BubbleView(
-            workspace: workspace,
-            state: store.bubbleState(for: workspace),
+            bubble: bubble,
+            state: store.bubbleState(for: bubble),
             onTap: { [weak self] in
-                Task { await self?.store.activateWorkspace(workspace) }
+                Task { await self?.store.activateBubble(bubble) }
             }
         )
         let hostingView = NSHostingView(rootView: bubbleView)
 
         let panel = FloatingBubblePanel(
-            workspaceId: workspace.id,
+            bubbleId: bubble.id,
             position: position,
             contentView: hostingView
         )
@@ -85,54 +85,54 @@ final class FloatingBubbleManager {
             panel.orderFront(nil)
             panel.clampToScreen()
         }
-        panels[workspace.id] = panel
+        panels[bubble.id] = panel
     }
 
-    func hideFloatingBubble(for workspaceId: String) {
-        if !headless { panels[workspaceId]?.orderOut(nil) }
-        panels.removeValue(forKey: workspaceId)
+    func hideFloatingBubble(for bubbleId: String) {
+        if !headless { panels[bubbleId]?.orderOut(nil) }
+        panels.removeValue(forKey: bubbleId)
     }
 
     func recallAll() {
         for id in panels.keys {
-            store.redockWorkspace(id, atSortOrder: store.workspaces.filter(\.docked).count)
+            store.redockBubble(id, atSortOrder: store.bubbles.filter(\.docked).count)
             if !headless { panels[id]?.orderOut(nil) }
         }
         panels.removeAll()
     }
 
     func refresh() {
-        let undocked = store.workspaces.filter { !$0.docked }
+        let undocked = store.bubbles.filter { !$0.docked }
         let undockedIds = Set(undocked.map(\.id))
 
         for id in panels.keys where !undockedIds.contains(id) {
             panels[id]?.orderOut(nil)
             panels.removeValue(forKey: id)
         }
-        for workspace in undocked where panels[workspace.id] == nil {
-            showFloatingBubble(for: workspace)
+        for bubble in undocked where panels[bubble.id] == nil {
+            showFloatingBubble(for: bubble)
         }
     }
 
     func savePositions() {
         for (id, panel) in panels {
-            store.undockWorkspace(id, position: panel.currentPosition)
+            store.undockBubble(id, position: panel.currentPosition)
         }
     }
 
-    func hasPanel(for workspaceId: String) -> Bool {
-        panels[workspaceId] != nil
+    func hasPanel(for bubbleId: String) -> Bool {
+        panels[bubbleId] != nil
     }
 
     var panelCount: Int { panels.count }
 
-    func panelContentView(for workspaceId: String) -> NSView? {
-        panels[workspaceId]?.contentView
+    func panelContentView(for bubbleId: String) -> NSView? {
+        panels[bubbleId]?.contentView
     }
 
     /// For testing: triggers the panel's mouseUp callback.
-    func simulateMouseUp(for workspaceId: String) {
-        guard let panel = panels[workspaceId] else { return }
-        panel.onMouseUp?(workspaceId, panel.frame)
+    func simulateMouseUp(for bubbleId: String) {
+        guard let panel = panels[bubbleId] else { return }
+        panel.onMouseUp?(bubbleId, panel.frame)
     }
 }

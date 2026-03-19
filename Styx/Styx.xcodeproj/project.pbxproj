@@ -28,6 +28,7 @@
 		A911D45 /* QuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B911D45; };
 		ABC4D61 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC4D61; };
 		A5EF11C /* SidebarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5EF11C; };
+		APRXWM1 /* ProxyWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BPRXWM1; };
 		A7897C7 /* StyxTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7897C7; };
 /* End PBXBuildFile section */
 
@@ -63,6 +64,7 @@
 		B911D45 /* QuickAddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAddView.swift; sourceTree = "<group>"; };
 		BBC4D61 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B5EF11C /* SidebarPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarPanel.swift; sourceTree = "<group>"; };
+		BPRXWM1 /* ProxyWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyWindowManager.swift; sourceTree = "<group>"; };
 		B7897C7 /* StyxTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyxTests.swift; sourceTree = "<group>"; };
 		B90016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B90017 /* Styx.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Styx.entitlements; sourceTree = "<group>"; };
@@ -156,6 +158,7 @@
 				BDAAEDB /* BubbleListView.swift */,
 				BCE4C00 /* BubbleView.swift */,
 				B09B65A /* FloatingBubblePanel.swift */,
+				BPRXWM1 /* ProxyWindowManager.swift */,
 				B911D45 /* QuickAddView.swift */,
 				BBC4D61 /* SettingsView.swift */,
 				B5EF11C /* SidebarPanel.swift */,
@@ -292,6 +295,7 @@
 				A911D45 /* QuickAddView.swift in Sources */,
 				ABC4D61 /* SettingsView.swift in Sources */,
 				A5EF11C /* SidebarPanel.swift in Sources */,
+				APRXWM1 /* ProxyWindowManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
