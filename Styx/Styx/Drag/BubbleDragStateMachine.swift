@@ -3,8 +3,8 @@ import Foundation
 struct BubbleDragStateMachine {
     enum Phase: Equatable {
         case idle
-        case pending(workspaceId: String)
-        case active(workspaceId: String)
+        case pending(bubbleId: String)
+        case active(bubbleId: String)
     }
 
     private(set) var phase: Phase = .idle
@@ -12,17 +12,17 @@ struct BubbleDragStateMachine {
     private let pendingThreshold: CGFloat = 8
     private let activeThreshold: CGFloat = 20
 
-    mutating func dragChanged(workspaceId: String, translation: CGSize) {
+    mutating func dragChanged(bubbleId: String, translation: CGSize) {
         let distance = hypot(translation.width, translation.height)
 
         switch phase {
         case .idle:
             if distance > pendingThreshold {
-                phase = .pending(workspaceId: workspaceId)
+                phase = .pending(bubbleId: bubbleId)
             }
         case .pending(let id):
             if distance > activeThreshold {
-                phase = .active(workspaceId: id)
+                phase = .active(bubbleId: id)
             }
         case .active:
             break

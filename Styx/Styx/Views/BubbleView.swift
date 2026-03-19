@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct BubbleView: View {
-    let workspace: Workspace
+    let bubble: Bubble
     let state: BubbleState
     let size: CGFloat
     let onTap: () -> Void
@@ -12,7 +12,7 @@ struct BubbleView: View {
     @State private var lastClickTime: Date = .distantPast
 
     init(
-        workspace: Workspace,
+        bubble: Bubble,
         state: BubbleState,
         size: CGFloat = 48,
         onTap: @escaping () -> Void,
@@ -20,7 +20,7 @@ struct BubbleView: View {
         onDragChanged: ((CGSize) -> Void)? = nil,
         onDragEnded: (() -> Void)? = nil
     ) {
-        self.workspace = workspace
+        self.bubble = bubble
         self.state = state
         self.size = size
         self.onTap = onTap
@@ -36,15 +36,15 @@ struct BubbleView: View {
                     .stroke(state.ringColor, lineWidth: 3)
                     .frame(width: size, height: size)
                 Circle()
-                    .fill(Color(hex: workspace.color).opacity(0.2))
+                    .fill(Color(hex: bubble.color).opacity(0.2))
                     .frame(width: size - 6, height: size - 6)
-                Image(systemName: workspace.icon)
+                Image(systemName: bubble.icon)
                     .font(.system(size: size * 0.35))
-                    .foregroundStyle(Color(hex: workspace.color))
+                    .foregroundStyle(Color(hex: bubble.color))
             }
             .opacity(state.opacity)
 
-            Text(workspace.name)
+            Text(bubble.name)
                 .font(.system(size: 9, weight: .medium))
                 .lineLimit(1)
                 .foregroundStyle(.secondary)
@@ -61,7 +61,7 @@ struct BubbleView: View {
             let interval = now.timeIntervalSince(lastClickTime)
             StateLedger.shared.record(
                 component: "BubbleView", operation: "tapGesture",
-                before: ["workspaceId": AnyCodable(workspace.id), "lastClickInterval": AnyCodable(interval)],
+                before: ["bubbleId": AnyCodable(bubble.id), "lastClickInterval": AnyCodable(interval)],
                 after: ["isDoubleTap": AnyCodable(interval < 0.35)]
             )
             if interval < 0.35 {

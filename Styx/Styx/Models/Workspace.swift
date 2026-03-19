@@ -19,9 +19,9 @@ struct CodablePoint: Codable, Equatable {
     }
 }
 
-// MARK: - Workspace
+// MARK: - Bubble
 
-struct Workspace: Identifiable, Codable, Equatable {
+struct Bubble: Identifiable, Codable, Equatable {
     var id: String
     var name: String
     var color: String
@@ -32,7 +32,7 @@ struct Workspace: Identifiable, Codable, Equatable {
     var docked: Bool
     var collapsed: Bool
     var floatingPosition: CodablePoint?
-    var tabs: [WorkspaceTab]
+    var tabs: [BubbleTab]
 
     init(
         id: String = UUID().uuidString,
@@ -45,7 +45,7 @@ struct Workspace: Identifiable, Codable, Equatable {
         docked: Bool = true,
         collapsed: Bool = false,
         floatingPosition: CodablePoint? = nil,
-        tabs: [WorkspaceTab] = []
+        tabs: [BubbleTab] = []
     ) {
         self.id = id
         self.name = name
@@ -77,13 +77,13 @@ struct Workspace: Identifiable, Codable, Equatable {
         docked = try c.decode(Bool.self, forKey: .docked)
         collapsed = try c.decodeIfPresent(Bool.self, forKey: .collapsed) ?? false
         floatingPosition = try c.decodeIfPresent(CodablePoint.self, forKey: .floatingPosition)
-        tabs = try c.decode([WorkspaceTab].self, forKey: .tabs)
+        tabs = try c.decode([BubbleTab].self, forKey: .tabs)
     }
 }
 
-// MARK: - WorkspaceTab
+// MARK: - BubbleTab
 
-struct WorkspaceTab: Codable, Equatable, Identifiable {
+struct BubbleTab: Codable, Equatable, Identifiable {
     var id: String { name }
     var name: String
     var dir: String?
@@ -95,50 +95,57 @@ struct WorkspaceTab: Codable, Equatable, Identifiable {
 struct StyxConfig: Codable {
     var version: Int = 1
     var sidebar: SidebarConfig = SidebarConfig()
-    var workspaces: [Workspace] = []
+    var bubbles: [Bubble] = []
     var hotkeys: HotkeyConfig = HotkeyConfig()
+    var terminal: TerminalConfig = TerminalConfig()
 }
 
 struct SidebarConfig: Codable {
     var position: CodablePoint = CodablePoint(x: 0, y: 200)
     var width: CGFloat = 72
     var visible: Bool = true
+    var showWindowControls: Bool = false
 }
 
 struct HotkeyConfig: Codable {
     var toggleSidebar: String = "Cmd+Shift+S"
-    var nextWorkspace: String = "Ctrl+Tab"
-    var prevWorkspace: String = "Ctrl+Shift+Tab"
+    var nextBubble: String = "Ctrl+Tab"
+    var prevBubble: String = "Ctrl+Shift+Tab"
     var nextTab: String = "Ctrl+Alt+Tab"
     var prevTab: String = "Ctrl+Alt+Shift+Tab"
 }
 
+struct TerminalConfig: Codable {
+    var showBubbleBadge: Bool = false
+    var setBubbleEnvVar: Bool = true
+}
+
 // MARK: - Templates
 
-struct WorkspaceTemplate {
+struct BubbleTemplate {
     let name: String
     let icon: String
-    let tabs: [WorkspaceTab]
+    let tabs: [BubbleTab]
 
-    static let webDev = WorkspaceTemplate(
+    static let webDev = BubbleTemplate(
         name: "Web Dev",
         icon: "globe",
         tabs: [
-            WorkspaceTab(name: "server", dir: "~/projects", cmd: nil),
-            WorkspaceTab(name: "git", dir: "~/projects", cmd: nil),
-            WorkspaceTab(name: "editor", dir: "~/projects", cmd: nil),
+            BubbleTab(name: "server", dir: "~/projects", cmd: nil),
+            BubbleTab(name: "git", dir: "~/projects", cmd: nil),
+            BubbleTab(name: "editor", dir: "~/projects", cmd: nil),
         ]
     )
 
-    static let devOps = WorkspaceTemplate(
+    static let devOps = BubbleTemplate(
         name: "DevOps",
         icon: "server.rack",
         tabs: [
-            WorkspaceTab(name: "ssh-prod", dir: "~", cmd: nil),
-            WorkspaceTab(name: "ssh-staging", dir: "~", cmd: nil),
-            WorkspaceTab(name: "logs", dir: "~", cmd: nil),
+            BubbleTab(name: "ssh-prod", dir: "~", cmd: nil),
+            BubbleTab(name: "ssh-staging", dir: "~", cmd: nil),
+            BubbleTab(name: "logs", dir: "~", cmd: nil),
         ]
     )
 
-    static let all: [WorkspaceTemplate] = [webDev, devOps]
+    static let all: [BubbleTemplate] = [webDev, devOps]
 }
