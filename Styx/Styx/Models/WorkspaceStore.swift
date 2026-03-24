@@ -30,22 +30,31 @@ final class BubbleStore {
     // MARK: - Bubble State
 
     func bubbleState(for bubble: Bubble) -> BubbleState {
+        if bubble.itermWindowId == nil {
+            return .disconnected
+        }
         if bubble.collapsed {
             return .min
         }
         if bubble.id == focusedBubbleId {
             return .focused
         }
-        if bubble.itermWindowId != nil {
-            return .active
-        }
-        return .dormant
+        return .active
     }
 
     // MARK: - Focus Tracking
 
     func handleFocusEvent(_ event: FocusEvent) {
         guard event.kind == .window, let windowId = event.windowId else { return }
+
+        // If the window resigned focus, clear the highlight
+        if let windowEvent = event.windowEvent, !windowEvent.isActive {
+            if focusedBubbleId == bubbles.first(where: { $0.itermWindowId == windowId })?.id {
+                focusedBubbleId = nil
+            }
+            return
+        }
+
         if let bubble = bubbles.first(where: { $0.itermWindowId == windowId }) {
             focusedBubbleId = bubble.id
         } else {
@@ -56,11 +65,12 @@ final class BubbleStore {
     // MARK: - Window Liveness
 
     func refreshWindowLiveness(activeWindowIds: Set<String>) {
-        bubbles.removeAll { bubble in
-            if let windowId = bubble.itermWindowId, !activeWindowIds.contains(windowId) {
-                return true
+        for i in bubbles.indices {
+            if let windowId = bubbles[i].itermWindowId, !activeWindowIds.contains(windowId) {
+                bubbles[i].itermWindowId = nil
+                bubbles[i].asWindowId = nil
+                bubbles[i].collapsed = false
             }
-            return false
         }
         saveConfig()
     }
@@ -95,25 +105,77 @@ final class BubbleStore {
         Task { await applyBubbleDecoration(b) }
     }
 
-    // MARK: - Dock / Undock
+    // MARK: - Home Directory
 
-    func undockBubble(_ id: String, position: CGPoint) {
+    func setHomeDir(_ id: String, to dir: String?) {
         guard let index = bubbles.firstIndex(where: { $0.id == id }) else { return }
-        bubbles[index].docked = false
-        bubbles[index].floatingPosition = CodablePoint(position)
+        let trimmed = dir?.trimmingCharacters(in: .whitespaces)
+        bubbles[index].homeDir = (trimmed?.isEmpty ?? true) ? nil : trimmed
+        saveConfig()
     }
 
-    func redockBubble(_ id: String, atSortOrder sortOrder: Int) {
-        guard let index = bubbles.firstIndex(where: { $0.id == id }) else { return }
-        bubbles[index].docked = true
-        bubbles[index].floatingPosition = nil
-        bubbles[index].sortOrder = sortOrder
+    // MARK: - Reorder
+
+    func reorderBubble(id: String, toIndex newIndex: Int) {
+        let sorted = bubbles.filter(\.docked).sorted { $0.sortOrder < $1.sortOrder }
+        guard let currentIdx = sorted.firstIndex(where: { $0.id == id }) else { return }
+        let clamped = max(0, min(newIndex, sorted.count - 1))
+        guard clamped != currentIdx else { return }
+
+        var reordered = sorted
+        let moved = reordered.remove(at: currentIdx)
+        reordered.insert(moved, at: clamped)
+
+        for (i, bubble) in reordered.enumerated() {
+            if let idx = bubbles.firstIndex(where: { $0.id == bubble.id }) {
+                bubbles[idx].sortOrder = i
+            }
+        }
     }
 
-    func recallAll() {
-        for i in bubbles.indices {
-            bubbles[i].docked = true
-            bubbles[i].floatingPosition = nil
+    // MARK: - Revive Disconnected Bubble
+
+    func reviveBubble(_ bubble: Bubble) async {
+        let dir = bubble.homeDir ?? "~"
+        let tabs = [BubbleTab(name: "shell", dir: dir, cmd: nil)]
+        let tabArgs = tabs.map { tab -> [String: Any] in
+            var dict: [String: Any] = ["name": tab.name]
+            if let d = tab.dir { dict["dir"] = d }
+            return dict
+        }
+
+        let before: [String: AnyCodable] = [
+            "id": A(bubble.id), "name": A(bubble.name),
+            "homeDir": A(dir), "bridgeConnected": A(bridgeConnected)
+        ]
+
+        do {
+            let result = try await bridge?.call("create_window", args: ["tabs": tabArgs])
+            guard let data = result as? [String: Any],
+                  let windowId = data["window_id"] as? String else {
+                L.record(component: "BubbleStore", operation: "reviveBubble",
+                         before: before, after: before,
+                         outcome: .failure, errorMessage: "No window_id in bridge response")
+                return
+            }
+
+            let asId = data["as_window_id"] as? Int
+            guard let index = bubbles.firstIndex(where: { $0.id == bubble.id }) else { return }
+            bubbles[index].itermWindowId = windowId
+            bubbles[index].asWindowId = asId
+            bubbles[index].tabs = tabs
+            saveConfig()
+
+            L.record(component: "BubbleStore", operation: "reviveBubble",
+                     before: before,
+                     after: ["windowId": A(windowId), "asWindowId": A(asId as Any)])
+
+            await applyBubbleDecoration(bubbles[index])
+        } catch {
+            logger.error("Failed to revive bubble \(bubble.name): \(error)")
+            L.record(component: "BubbleStore", operation: "reviveBubble",
+                     before: before, after: before,
+                     outcome: .failure, errorMessage: error.localizedDescription)
         }
     }
 
@@ -273,7 +335,12 @@ final class BubbleStore {
     }
 
     func activateBubble(_ bubble: Bubble) async {
-        guard let windowId = bubble.itermWindowId else { return }
+        // If disconnected, revive instead
+        if bubble.itermWindowId == nil {
+            await reviveBubble(bubble)
+            return
+        }
+        let windowId = bubble.itermWindowId!
         let before: [String: AnyCodable] = ["id": A(bubble.id), "windowId": A(windowId), "name": A(bubble.name)]
         do {
             _ = try await bridge?.call("activate_window", args: ["window_id": windowId])
@@ -316,7 +383,7 @@ final class BubbleStore {
         }
     }
 
-    func createBubble(name: String, color: String, icon: String, tabs: [BubbleTab]) async {
+    func createBubble(name: String, color: String, icon: String, tabs: [BubbleTab], homeDir: String? = nil) async {
         let tabArgs = tabs.map { tab -> [String: Any] in
             var dict: [String: Any] = ["name": tab.name]
             if let dir = tab.dir { dict["dir"] = dir }
@@ -343,7 +410,8 @@ final class BubbleStore {
             let bubble = Bubble(
                 name: name, color: color, icon: icon,
                 sortOrder: bubbles.count,
-                itermWindowId: windowId, asWindowId: asId, tabs: tabs
+                itermWindowId: windowId, asWindowId: asId,
+                homeDir: homeDir, tabs: tabs
             )
             bubbles.append(bubble)
             saveConfig()

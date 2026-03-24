@@ -24,7 +24,6 @@
 		A53D408 /* StyxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B53D408; };
 		ADAAEDB /* BubbleListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDAAEDB; };
 		ACE4C00 /* BubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCE4C00; };
-		A09B65A /* FloatingBubblePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B09B65A; };
 		A911D45 /* QuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B911D45; };
 		ABC4D61 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBC4D61; };
 		A5EF11C /* SidebarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5EF11C; };
@@ -60,7 +59,6 @@
 		B53D408 /* StyxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StyxApp.swift; sourceTree = "<group>"; };
 		BDAAEDB /* BubbleListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleListView.swift; sourceTree = "<group>"; };
 		BCE4C00 /* BubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleView.swift; sourceTree = "<group>"; };
-		B09B65A /* FloatingBubblePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingBubblePanel.swift; sourceTree = "<group>"; };
 		B911D45 /* QuickAddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAddView.swift; sourceTree = "<group>"; };
 		BBC4D61 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B5EF11C /* SidebarPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarPanel.swift; sourceTree = "<group>"; };
@@ -157,7 +155,6 @@
 			children = (
 				BDAAEDB /* BubbleListView.swift */,
 				BCE4C00 /* BubbleView.swift */,
-				B09B65A /* FloatingBubblePanel.swift */,
 				BPRXWM1 /* ProxyWindowManager.swift */,
 				B911D45 /* QuickAddView.swift */,
 				BBC4D61 /* SettingsView.swift */,
@@ -291,7 +288,6 @@
 				A53D408 /* StyxApp.swift in Sources */,
 				ADAAEDB /* BubbleListView.swift in Sources */,
 				ACE4C00 /* BubbleView.swift in Sources */,
-				A09B65A /* FloatingBubblePanel.swift in Sources */,
 				A911D45 /* QuickAddView.swift in Sources */,
 				ABC4D61 /* SettingsView.swift in Sources */,
 				A5EF11C /* SidebarPanel.swift in Sources */,
@@ -316,10 +312,10 @@
 /* Begin XCBuildConfiguration section */
 		X11001 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ANALYZER_NONNULL = YES; CLANG_CXX_LANGUAGE_STANDARD = "gnu++20"; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; COPY_PHASE_STRIP = NO; DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_STRICT_OBJC_MSGSEND = YES; ENABLE_TESTABILITY = YES; GCC_DYNAMIC_NO_PIC = NO; GCC_OPTIMIZATION_LEVEL = 0; GCC_PREPROCESSOR_DEFINITIONS = ("DEBUG=1", "$(inherited)"); MACOSX_DEPLOYMENT_TARGET = 14.0; MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE; ONLY_ACTIVE_ARCH = YES; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG"; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; }; name = Debug; };
 		X11002 /* Release */ = { isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ANALYZER_NONNULL = YES; CLANG_CXX_LANGUAGE_STANDARD = "gnu++20"; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; COPY_PHASE_STRIP = NO; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; ENABLE_NS_ASSERTIONS = NO; ENABLE_STRICT_OBJC_MSGSEND = YES; MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_COMPILATION_MODE = wholemodule; }; name = Release; };
-		X21001 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_ENTITLEMENTS = Styx/Styx.entitlements; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = Styx/Info.plist; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); MARKETING_VERSION = 0.12.0; PRODUCT_BUNDLE_IDENTIFIER = com.styx.app; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; }; name = Debug; };
-		X21002 /* Release */ = { isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_ENTITLEMENTS = Styx/Styx.entitlements; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = Styx/Info.plist; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); MARKETING_VERSION = 0.12.0; PRODUCT_BUNDLE_IDENTIFIER = com.styx.app; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; }; name = Release; };
-		X22001 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = YES; MARKETING_VERSION = 0.12.0; PRODUCT_BUNDLE_IDENTIFIER = com.styx.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = NO; SWIFT_VERSION = 5.0; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Styx.app/Contents/MacOS/Styx"; }; name = Debug; };
-		X22002 /* Release */ = { isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = YES; MARKETING_VERSION = 0.12.0; PRODUCT_BUNDLE_IDENTIFIER = com.styx.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = NO; SWIFT_VERSION = 5.0; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Styx.app/Contents/MacOS/Styx"; }; name = Release; };
+		X21001 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_ENTITLEMENTS = Styx/Styx.entitlements; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = Styx/Info.plist; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); MARKETING_VERSION = 0.13.0; PRODUCT_BUNDLE_IDENTIFIER = com.styx.app; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; }; name = Debug; };
+		X21002 /* Release */ = { isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_ENTITLEMENTS = Styx/Styx.entitlements; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_FILE = Styx/Info.plist; INFOPLIST_KEY_LSUIElement = YES; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); MARKETING_VERSION = 0.13.0; PRODUCT_BUNDLE_IDENTIFIER = com.styx.app; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; }; name = Release; };
+		X22001 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = YES; MARKETING_VERSION = 0.13.0; PRODUCT_BUNDLE_IDENTIFIER = com.styx.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = NO; SWIFT_VERSION = 5.0; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Styx.app/Contents/MacOS/Styx"; }; name = Debug; };
+		X22002 /* Release */ = { isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = YES; MARKETING_VERSION = 0.13.0; PRODUCT_BUNDLE_IDENTIFIER = com.styx.tests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = NO; SWIFT_VERSION = 5.0; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Styx.app/Contents/MacOS/Styx"; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */

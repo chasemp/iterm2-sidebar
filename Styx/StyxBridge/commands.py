@@ -238,17 +238,34 @@ async def cmd_minimize_window(connection: iterm2.Connection, args: dict) -> dict
     minimize = args.get("minimize", True)
     action = "true" if minimize else "false"
 
-    script = f'''
-        tell application "iTerm2"
-            repeat with w in windows
-                if id of w is {as_id} then
-                    set miniaturized of w to {action}
-                    return "ok"
-                end if
-            end repeat
-            error "No window with AppleScript ID {as_id}"
-        end tell
-    '''
+    if minimize:
+        script = f'''
+            tell application "iTerm2"
+                repeat with w in windows
+                    if id of w is {as_id} then
+                        set miniaturized of w to true
+                        return "ok"
+                    end if
+                end repeat
+                error "No window with AppleScript ID {as_id}"
+            end tell
+        '''
+    else:
+        # Restore: unminimize, activate iTerm2, and bring window to front.
+        # This moves the window to the current space/desktop.
+        script = f'''
+            tell application "iTerm2"
+                repeat with w in windows
+                    if id of w is {as_id} then
+                        set miniaturized of w to false
+                        activate
+                        set index of w to 1
+                        return "ok"
+                    end if
+                end repeat
+                error "No window with AppleScript ID {as_id}"
+            end tell
+        '''
 
     result = subprocess.run(
         ["osascript", "-e", script],

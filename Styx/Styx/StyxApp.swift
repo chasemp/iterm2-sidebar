@@ -34,10 +34,6 @@ struct MenuBarContent: View {
                 appDelegate.toggleSidebar()
             }
 
-            Button("Recall All Bubbles") {
-                appDelegate.recallAll()
-            }
-
             Button("Capture Current Terminal") {
                 Task { await appDelegate.captureCurrentWindow() }
             }
@@ -85,11 +81,9 @@ struct MenuBarContent: View {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = BubbleStore()
     private(set) lazy var sidebarController = SidebarPanelController(store: store, headless: headless)
-    private(set) lazy var floatingManager = FloatingBubbleManager(store: store, headless: headless)
     private(set) lazy var proxyManager = ProxyWindowManager(store: store, headless: headless)
     var headless = false
     let hotkeyRegistrar = HotkeyRegistrar()
-    private var dragStateMachine = BubbleDragStateMachine()
     private var focusTask: Task<Void, Never>?
     private var pollTask: Task<Void, Never>?
     private var keyEventMonitor: Any?
@@ -101,64 +95,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         sidebarController.toggle()
     }
 
-    func recallAll() {
-        floatingManager.recallAll()
-        sidebarController.refresh()
-    }
-
-    func handleDragUndock(bubbleId: String, screenPoint: CGPoint) {
-        store.undockBubble(bubbleId, position: screenPoint)
-        if let bubble = store.bubbles.first(where: { $0.id == bubbleId }) {
-            floatingManager.showFloatingBubble(for: bubble)
-        }
-        sidebarController.refresh()
-    }
-
-    func handleRedockCheck(bubbleId: String, panelFrame: NSRect) {
-        guard let sidebarFrame = sidebarController.panelFrame else { return }
-        let dockZone = DockZone(sidebarFrame: sidebarFrame)
-        let center = CGPoint(x: panelFrame.midX, y: panelFrame.midY)
-        if dockZone.contains(center) {
-            let sortOrder = dockZone.insertionIndex(
-                at: center,
-                bubbleCount: store.bubbles.filter(\.docked).count
-            )
-            store.redockBubble(bubbleId, atSortOrder: sortOrder)
-            floatingManager.hideFloatingBubble(for: bubbleId)
-            sidebarController.refresh()
-        }
-    }
-
     /// Testable launch — accepts injected bridge.
     func launch(bridge: any BridgeService) async {
         await store.connectBridge(bridge)
-
-        // Wire sidebar drag callbacks
-        sidebarController.onDragChanged = { [weak self] id, translation in
-            self?.dragStateMachine.dragChanged(bubbleId: id, translation: translation)
-        }
-        sidebarController.onDragEnded = { [weak self] id in
-            guard let self else { return }
-            guard let draggedId = self.dragStateMachine.dragEnded() else { return }
-            let screenPoint = NSEvent.mouseLocation
-            if let sidebarFrame = self.sidebarController.panelFrame {
-                let dockZone = DockZone(sidebarFrame: sidebarFrame)
-                if !dockZone.contains(screenPoint) {
-                    self.handleDragUndock(bubbleId: draggedId, screenPoint: screenPoint)
-                }
-            }
-        }
 
         if store.sidebarVisible {
             sidebarController.show()
         }
 
-        // Wire redock callback
-        floatingManager.onRedockCheck = { [weak self] id, frame in
-            self?.handleRedockCheck(bubbleId: id, panelFrame: frame)
-        }
-
-        floatingManager.refresh()
         proxyManager.refresh()
         registerHotkeys()
         installKeyEventMonitor()
@@ -270,7 +214,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             activationObserver = nil
         }
         proxyManager.closeAll()
-        floatingManager.savePositions()
         store.saveConfig()
     }
 

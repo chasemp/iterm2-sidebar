@@ -189,9 +189,7 @@ final class SidebarPanelController {
     private var autoRefreshTask: Task<Void, Never>?
     private var lastBubbleCount: Int = 0
     private var lastShowWindowControls: Bool = false
-
-    var onDragChanged: ((String, CGSize) -> Void)?
-    var onDragEnded: ((String) -> Void)?
+    private var lastWidth: CGFloat = 72
 
     init(store: BubbleStore, headless: Bool = false) {
         self.store = store
@@ -219,6 +217,14 @@ final class SidebarPanelController {
                     self.lastBubbleCount = count
                     self.panel?.resizeToFit(bubbleCount: count)
                 }
+                // Update width if changed in settings
+                let wantWidth = self.store.config.sidebar.width
+                if wantWidth != self.lastWidth, let panel = self.panel {
+                    self.lastWidth = wantWidth
+                    var f = panel.frame
+                    f.size.width = wantWidth
+                    panel.setFrame(f, display: true, animate: true)
+                }
             }
         }
     }
@@ -232,15 +238,7 @@ final class SidebarPanelController {
         let panelExisted = panel != nil
         if panel == nil {
             lastShowWindowControls = store.config.sidebar.showWindowControls
-            let rootView = BubbleListView(
-                store: store,
-                onDragChanged: { [weak self] id, translation in
-                    self?.onDragChanged?(id, translation)
-                },
-                onDragEnded: { [weak self] id in
-                    self?.onDragEnded?(id)
-                }
-            )
+            let rootView = BubbleListView(store: store)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(.ultraThinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 12))
