@@ -5,6 +5,7 @@ struct QuickAddView: View {
     @Binding var isPresented: Bool
 
     @State private var name = ""
+    @State private var homeDir = ""
     @State private var color = "#4A90D9"
     @State private var icon = "terminal"
 
@@ -23,6 +24,10 @@ struct QuickAddView: View {
             Text("New Bubble").font(.headline)
 
             TextField("Bubble name", text: $name).textFieldStyle(.roundedBorder)
+
+            TextField("Home directory", text: $homeDir, prompt: Text("~"))
+                .textFieldStyle(.roundedBorder)
+                .font(.system(.body, design: .monospaced))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Color").font(.caption).foregroundStyle(.secondary)
@@ -61,12 +66,15 @@ struct QuickAddView: View {
     }
 
     private func createBubble() async {
-        let tabs = [BubbleTab(name: "shell", dir: "~", cmd: nil)]
+        let resolvedDir = homeDir.trimmingCharacters(in: .whitespaces)
+        let dir = resolvedDir.isEmpty ? "~" : resolvedDir
+        let tabs = [BubbleTab(name: "shell", dir: dir, cmd: nil)]
         await store.createBubble(
             name: name.trimmingCharacters(in: .whitespaces),
             color: color,
             icon: icon,
-            tabs: tabs
+            tabs: tabs,
+            homeDir: resolvedDir.isEmpty ? nil : resolvedDir
         )
         isPresented = false
     }

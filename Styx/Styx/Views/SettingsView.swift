@@ -4,8 +4,6 @@ import ServiceManagement
 struct SettingsView: View {
     @Bindable var store: BubbleStore
     @State private var launchAtLogin = false
-    @State private var bubbleSize: Double = 48
-    @State private var sidebarOpacity: Double = 1.0
 
     var body: some View {
         TabView {
@@ -86,10 +84,10 @@ struct SettingsView: View {
             Toggle("Show window controls", isOn: $store.config.sidebar.showWindowControls)
                 .help("Show close/minimize buttons on the sidebar (applies on next toggle)")
             LabeledContent("Bubble Size") {
-                Slider(value: $bubbleSize, in: 32...64, step: 4) { Text("\(Int(bubbleSize))pt") }
+                Slider(value: $store.config.sidebar.bubbleSize, in: 32...64, step: 4) { Text("\(Int(store.config.sidebar.bubbleSize))pt") }
             }
             LabeledContent("Sidebar Opacity") {
-                Slider(value: $sidebarOpacity, in: 0.5...1.0, step: 0.05) { Text("\(Int(sidebarOpacity * 100))%") }
+                Slider(value: $store.config.sidebar.opacity, in: 0.5...1.0, step: 0.05) { Text("\(Int(store.config.sidebar.opacity * 100))%") }
             }
             LabeledContent("Sidebar Width") {
                 Slider(value: $store.config.sidebar.width, in: 56...120, step: 4) { Text("\(Int(store.config.sidebar.width))pt") }

@@ -60,16 +60,41 @@ struct FocusEvent {
         case window, tab, session
     }
 
+    enum WindowEvent: Equatable {
+        case becameKey
+        case isCurrent
+        case resignedKey
+        case unknown
+
+        init(from string: String) {
+            switch string {
+            case let s where s.contains("BECAME_KEY"): self = .becameKey
+            case let s where s.contains("IS_CURRENT"): self = .isCurrent
+            case let s where s.contains("RESIGNED_KEY"): self = .resignedKey
+            default: self = .unknown
+            }
+        }
+
+        var isActive: Bool {
+            switch self {
+            case .becameKey, .isCurrent: return true
+            case .resignedKey, .unknown: return false
+            }
+        }
+    }
+
     let kind: Kind
     let windowId: String?
     let tabId: String?
     let sessionId: String?
+    let windowEvent: WindowEvent?
 
-    init(kind: Kind, windowId: String? = nil, tabId: String? = nil, sessionId: String? = nil) {
+    init(kind: Kind, windowId: String? = nil, tabId: String? = nil, sessionId: String? = nil, windowEvent: WindowEvent? = nil) {
         self.kind = kind
         self.windowId = windowId
         self.tabId = tabId
         self.sessionId = sessionId
+        self.windowEvent = windowEvent
     }
 
     init?(from response: BridgeResponse) {
@@ -83,6 +108,11 @@ struct FocusEvent {
         self.windowId = data["window_id"] as? String
         self.tabId = data["tab_id"] as? String
         self.sessionId = data["session_id"] as? String
+        if let eventStr = data["event"] as? String {
+            self.windowEvent = WindowEvent(from: eventStr)
+        } else {
+            self.windowEvent = nil
+        }
     }
 }
 

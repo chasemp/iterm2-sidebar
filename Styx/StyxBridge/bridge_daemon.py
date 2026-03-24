@@ -74,7 +74,7 @@ async def monitor_focus(connection: iterm2.Connection) -> None:
                 event_data = {
                     "type": "window",
                     "window_id": wc.window_id,
-                    "event": str(wc.event),
+                    "event": wc.event.name,
                 }
             elif update.selected_tab_changed is not None:
                 tc = update.selected_tab_changed

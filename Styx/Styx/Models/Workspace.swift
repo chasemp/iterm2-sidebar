@@ -32,6 +32,7 @@ struct Bubble: Identifiable, Codable, Equatable {
     var docked: Bool
     var collapsed: Bool
     var floatingPosition: CodablePoint?
+    var homeDir: String?
     var tabs: [BubbleTab]
 
     init(
@@ -45,6 +46,7 @@ struct Bubble: Identifiable, Codable, Equatable {
         docked: Bool = true,
         collapsed: Bool = false,
         floatingPosition: CodablePoint? = nil,
+        homeDir: String? = nil,
         tabs: [BubbleTab] = []
     ) {
         self.id = id
@@ -57,12 +59,13 @@ struct Bubble: Identifiable, Codable, Equatable {
         self.docked = docked
         self.collapsed = collapsed
         self.floatingPosition = floatingPosition
+        self.homeDir = homeDir
         self.tabs = tabs
     }
 
-    // Support decoding configs saved before collapsed was added
+    // Support decoding configs saved before new fields were added
     enum CodingKeys: String, CodingKey {
-        case id, name, color, icon, sortOrder, itermWindowId, asWindowId, docked, collapsed, floatingPosition, tabs
+        case id, name, color, icon, sortOrder, itermWindowId, asWindowId, docked, collapsed, floatingPosition, homeDir, tabs
     }
 
     init(from decoder: Decoder) throws {
@@ -77,6 +80,7 @@ struct Bubble: Identifiable, Codable, Equatable {
         docked = try c.decode(Bool.self, forKey: .docked)
         collapsed = try c.decodeIfPresent(Bool.self, forKey: .collapsed) ?? false
         floatingPosition = try c.decodeIfPresent(CodablePoint.self, forKey: .floatingPosition)
+        homeDir = try c.decodeIfPresent(String.self, forKey: .homeDir)
         tabs = try c.decode([BubbleTab].self, forKey: .tabs)
     }
 }
@@ -105,6 +109,8 @@ struct SidebarConfig: Codable {
     var width: CGFloat = 72
     var visible: Bool = true
     var showWindowControls: Bool = false
+    var bubbleSize: CGFloat = 48
+    var opacity: CGFloat = 1.0
 }
 
 struct HotkeyConfig: Codable {

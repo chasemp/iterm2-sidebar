@@ -305,46 +305,11 @@ final class BubbleStoreTests: XCTestCase {
         XCTAssertEqual(store.bubbleState(for: ws), .active)
     }
 
-    func test_bubble_without_window_returns_dormant() {
+    func test_bubble_without_window_returns_disconnected() {
         let ws = makeBubble(name: "A", itermWindowId: nil)
         let store = makeStore(bubbles: [ws])
 
-        XCTAssertEqual(store.bubbleState(for: ws), .dormant)
-    }
-
-    func test_undock_sets_docked_false_and_saves_position() {
-        var ws = makeBubble(name: "A", docked: true)
-        let store = makeStore(bubbles: [ws])
-
-        store.undockBubble(ws.id, position: CGPoint(x: 100, y: 200))
-
-        let updated = store.bubbles.first { $0.id == ws.id }!
-        XCTAssertFalse(updated.docked)
-        XCTAssertEqual(updated.floatingPosition, CodablePoint(x: 100, y: 200))
-    }
-
-    func test_redock_sets_docked_true_and_clears_position() {
-        var ws = makeBubble(name: "A", docked: false, floatingPosition: CodablePoint(x: 50, y: 50))
-        let store = makeStore(bubbles: [ws])
-
-        store.redockBubble(ws.id, atSortOrder: 0)
-
-        let updated = store.bubbles.first { $0.id == ws.id }!
-        XCTAssertTrue(updated.docked)
-        XCTAssertNil(updated.floatingPosition)
-        XCTAssertEqual(updated.sortOrder, 0)
-    }
-
-    func test_recall_all_redocks_every_floating_bubble() {
-        let a = makeBubble(name: "A", docked: false, floatingPosition: CodablePoint(x: 10, y: 10))
-        let b = makeBubble(name: "B", docked: false, floatingPosition: CodablePoint(x: 20, y: 20))
-        let c = makeBubble(name: "C", docked: true)
-        let store = makeStore(bubbles: [a, b, c])
-
-        store.recallAll()
-
-        XCTAssertTrue(store.bubbles.allSatisfy(\.docked))
-        XCTAssertTrue(store.bubbles.allSatisfy { $0.floatingPosition == nil })
+        XCTAssertEqual(store.bubbleState(for: ws), .disconnected)
     }
 
     func test_cycle_forward_wraps_around() {
@@ -686,29 +651,6 @@ final class BubbleStoreEdgeCaseTests: XCTestCase {
         XCTAssertNil(store.bubbleIdByIndex(-1))
     }
 
-    func test_undock_nonexistent_bubble_is_noop() {
-        let store = BubbleStore()
-        store.config.bubbles = [makeBubble(name: "A")]
-        let countBefore = store.bubbles.count
-        store.undockBubble("nonexistent", position: .zero)
-        XCTAssertEqual(store.bubbles.count, countBefore)
-    }
-
-    func test_redock_nonexistent_bubble_is_noop() {
-        let store = BubbleStore()
-        store.config.bubbles = [makeBubble(name: "A")]
-        store.redockBubble("nonexistent", atSortOrder: 0)
-        XCTAssertTrue(store.bubbles.first!.docked)
-    }
-
-    func test_recall_all_with_no_floating_is_noop() {
-        let store = BubbleStore()
-        let ws = makeBubble(name: "A", docked: true)
-        store.config.bubbles = [ws]
-        store.recallAll()
-        XCTAssertTrue(store.bubbles.allSatisfy(\.docked))
-    }
-
     func test_load_corrupted_json_keeps_defaults() {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try! FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -766,6 +708,32 @@ final class FocusEventEdgeCaseTests: XCTestCase {
         XCTAssertNotNil(event)
         XCTAssertEqual(event?.kind, .session)
         XCTAssertEqual(event?.sessionId, "sess-7")
+    }
+
+    func test_window_event_became_key_parsed() throws {
+        let json = #"{"id":null,"event":"focus_changed","data":{"type":"window","window_id":"pty-1","event":"TERMINAL_WINDOW_BECAME_KEY"}}"#
+        let response = try JSONDecoder().decode(BridgeResponse.self, from: json.data(using: .utf8)!)
+        let event = FocusEvent(from: response)
+        XCTAssertNotNil(event)
+        XCTAssertEqual(event?.windowEvent, .becameKey)
+        XCTAssertTrue(event?.windowEvent?.isActive ?? false)
+    }
+
+    func test_window_event_resigned_key_parsed() throws {
+        let json = #"{"id":null,"event":"focus_changed","data":{"type":"window","window_id":"pty-1","event":"TERMINAL_WINDOW_RESIGNED_KEY"}}"#
+        let response = try JSONDecoder().decode(BridgeResponse.self, from: json.data(using: .utf8)!)
+        let event = FocusEvent(from: response)
+        XCTAssertNotNil(event)
+        XCTAssertEqual(event?.windowEvent, .resignedKey)
+        XCTAssertFalse(event?.windowEvent?.isActive ?? true)
+    }
+
+    func test_window_event_missing_defaults_to_nil() throws {
+        let json = #"{"id":null,"event":"focus_changed","data":{"type":"window","window_id":"pty-1"}}"#
+        let response = try JSONDecoder().decode(BridgeResponse.self, from: json.data(using: .utf8)!)
+        let event = FocusEvent(from: response)
+        XCTAssertNotNil(event)
+        XCTAssertNil(event?.windowEvent)
     }
 
     func test_invalid_focus_type_returns_nil() throws {
@@ -952,84 +920,6 @@ final class SidebarBehaviorTests: XCTestCase {
     }
 }
 
-@MainActor
-final class FloatingBubbleBehaviorTests: XCTestCase {
-
-    func test_show_floating_bubble_creates_panel() {
-        let store = BubbleStore()
-        let manager = FloatingBubbleManager(store: store, headless: true)
-        let ws = makeBubble(name: "Floater", docked: false, floatingPosition: CodablePoint(x: 100, y: 100))
-
-        manager.showFloatingBubble(for: ws)
-
-        XCTAssertTrue(manager.hasPanel(for: ws.id))
-    }
-
-    func test_hide_floating_bubble_removes_panel() {
-        let store = BubbleStore()
-        let manager = FloatingBubbleManager(store: store, headless: true)
-        let ws = makeBubble(name: "Floater", docked: false)
-
-        manager.showFloatingBubble(for: ws)
-        manager.hideFloatingBubble(for: ws.id)
-
-        XCTAssertFalse(manager.hasPanel(for: ws.id))
-    }
-
-    func test_recall_all_removes_all_panels_and_redocks() {
-        let store = BubbleStore()
-        let a = makeBubble(name: "A", docked: false)
-        let b = makeBubble(name: "B", docked: false)
-        store.config.bubbles = [a, b]
-        let manager = FloatingBubbleManager(store: store, headless: true)
-        manager.showFloatingBubble(for: a)
-        manager.showFloatingBubble(for: b)
-
-        manager.recallAll()
-
-        XCTAssertFalse(manager.hasPanel(for: a.id))
-        XCTAssertFalse(manager.hasPanel(for: b.id))
-        XCTAssertTrue(store.bubbles.allSatisfy(\.docked))
-    }
-
-    func test_refresh_syncs_panels_with_undocked_bubbles() {
-        let store = BubbleStore()
-        let a = makeBubble(name: "A", docked: false)
-        let b = makeBubble(name: "B", docked: true)
-        store.config.bubbles = [a, b]
-        let manager = FloatingBubbleManager(store: store, headless: true)
-
-        manager.refresh()
-
-        XCTAssertTrue(manager.hasPanel(for: a.id))
-        XCTAssertFalse(manager.hasPanel(for: b.id))
-    }
-
-    func test_refresh_removes_panels_for_redocked_bubbles() {
-        let store = BubbleStore()
-        var ws = makeBubble(name: "A", docked: false)
-        store.config.bubbles = [ws]
-        let manager = FloatingBubbleManager(store: store, headless: true)
-        manager.showFloatingBubble(for: ws)
-
-        store.redockBubble(ws.id, atSortOrder: 0)
-        manager.refresh()
-
-        XCTAssertFalse(manager.hasPanel(for: ws.id))
-    }
-
-    func test_duplicate_show_does_not_create_second_panel() {
-        let store = BubbleStore()
-        let ws = makeBubble(name: "A", docked: false)
-        let manager = FloatingBubbleManager(store: store, headless: true)
-
-        manager.showFloatingBubble(for: ws)
-        manager.showFloatingBubble(for: ws) // second call
-
-        XCTAssertEqual(manager.panelCount, 1)
-    }
-}
-
 final class ITerm2BridgeBehaviorTests: XCTestCase {
 
     func test_bridge_conforms_to_service_protocol() {
@@ -1061,11 +951,6 @@ final class AppWiringTests: XCTestCase {
         XCTAssertNotNil(delegate.sidebarController)
     }
 
-    func test_app_delegate_creates_floating_manager() {
-        let delegate = AppDelegate(); do { delegate.headless = true }
-        XCTAssertNotNil(delegate.floatingManager)
-    }
-
     func test_toggle_sidebar_flips_visibility() {
         let delegate = AppDelegate(); do { delegate.headless = true }
         let initial = delegate.store.sidebarVisible
@@ -1073,17 +958,6 @@ final class AppWiringTests: XCTestCase {
         XCTAssertNotEqual(delegate.store.sidebarVisible, initial)
     }
 
-    func test_recall_all_redocks_and_refreshes() {
-        let delegate = AppDelegate(); do { delegate.headless = true }
-        let a = makeBubble(name: "A", docked: false)
-        delegate.store.config.bubbles = [a]
-        delegate.floatingManager.showFloatingBubble(for: a)
-
-        delegate.recallAll()
-
-        XCTAssertTrue(delegate.store.bubbles.allSatisfy(\.docked))
-        XCTAssertFalse(delegate.floatingManager.hasPanel(for: a.id))
-    }
 }
 
 @MainActor
@@ -1118,15 +992,6 @@ final class AppLaunchBehaviorTests: XCTestCase {
         XCTAssertTrue(started)
     }
 
-    func test_launch_restores_floating_bubbles() async {
-        let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeBubble(name: "Float", docked: false, floatingPosition: CodablePoint(x: 50, y: 50))
-        delegate.store.config.bubbles = [ws]
-        let fake = FakeBridge()
-        await delegate.launch(bridge: fake)
-
-        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
-    }
 }
 
 @MainActor
@@ -1140,23 +1005,6 @@ final class SidebarContentBehaviorTests: XCTestCase {
 
         XCTAssertNotNil(controller.panelFrame)
         XCTAssertGreaterThan(controller.panelFrame!.height, 50)
-    }
-}
-
-@MainActor
-final class FloatingBubbleRedockBehaviorTests: XCTestCase {
-
-    func test_floating_panel_has_redock_callback() {
-        let store = BubbleStore()
-        let ws = makeBubble(name: "A", docked: false)
-        store.config.bubbles = [ws]
-        let manager = FloatingBubbleManager(store: store, headless: true)
-
-        var redockCalled = false
-        manager.onRedockCheck = { _, _ in redockCalled = true }
-        manager.showFloatingBubble(for: ws)
-
-        XCTAssertTrue(manager.hasPanel(for: ws.id))
     }
 }
 
@@ -1191,6 +1039,62 @@ final class FocusTrackingBehaviorTests: XCTestCase {
         store.focusedBubbleId = ws.id
 
         store.handleFocusEvent(FocusEvent(kind: .tab, tabId: "tab-99"))
+
+        XCTAssertEqual(store.focusedBubbleId, ws.id)
+    }
+
+    func test_resigned_key_event_clears_focused_bubble() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Active", itermWindowId: "pty-42")
+        store.config.bubbles = [ws]
+        store.focusedBubbleId = ws.id
+
+        store.handleFocusEvent(FocusEvent(
+            kind: .window, windowId: "pty-42",
+            windowEvent: .resignedKey
+        ))
+
+        XCTAssertNil(store.focusedBubbleId)
+    }
+
+    func test_resigned_key_for_other_window_does_not_clear_focus() {
+        let store = BubbleStore()
+        let a = makeBubble(name: "A", itermWindowId: "pty-1")
+        let b = makeBubble(name: "B", itermWindowId: "pty-2")
+        store.config.bubbles = [a, b]
+        store.focusedBubbleId = a.id
+
+        // Window B resigns — should not affect A's focus
+        store.handleFocusEvent(FocusEvent(
+            kind: .window, windowId: "pty-2",
+            windowEvent: .resignedKey
+        ))
+
+        XCTAssertEqual(store.focusedBubbleId, a.id)
+    }
+
+    func test_became_key_event_sets_focused_bubble() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Active", itermWindowId: "pty-42")
+        store.config.bubbles = [ws]
+
+        store.handleFocusEvent(FocusEvent(
+            kind: .window, windowId: "pty-42",
+            windowEvent: .becameKey
+        ))
+
+        XCTAssertEqual(store.focusedBubbleId, ws.id)
+    }
+
+    func test_is_current_event_sets_focused_bubble() {
+        let store = BubbleStore()
+        let ws = makeBubble(name: "Active", itermWindowId: "pty-42")
+        store.config.bubbles = [ws]
+
+        store.handleFocusEvent(FocusEvent(
+            kind: .window, windowId: "pty-42",
+            windowEvent: .isCurrent
+        ))
 
         XCTAssertEqual(store.focusedBubbleId, ws.id)
     }
@@ -1243,104 +1147,6 @@ final class BubbleViewBehaviorTests: XCTestCase {
     func test_color_from_hex_creates_valid_color() {
         let color = Color(hex: "#FF0000")
         XCTAssertNotNil(color)
-    }
-}
-
-@MainActor
-final class DragUndockBehaviorTests: XCTestCase {
-
-    func test_completing_drag_outside_sidebar_undocks_bubble_and_shows_floating_panel() {
-        let store = BubbleStore()
-        let ws = makeBubble(name: "Dragged", docked: true)
-        store.config.bubbles = [ws]
-
-        let sidebarController = SidebarPanelController(store: store, headless: true)
-        sidebarController.show()
-        let floatingManager = FloatingBubbleManager(store: store, headless: true)
-
-        var machine = BubbleDragStateMachine()
-        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 10, height: 0))
-        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 25, height: 0))
-
-        guard let draggedId = machine.dragEnded() else {
-            XCTFail("Expected active drag to return bubble ID")
-            return
-        }
-
-        let dropPoint = CGPoint(x: 300, y: 400)
-        var dockZone = DockZone()
-        if let sidebarFrame = sidebarController.panelFrame {
-            dockZone.sidebarFrame = sidebarFrame
-        }
-
-        if !dockZone.contains(dropPoint) {
-            store.undockBubble(draggedId, position: dropPoint)
-            if let bubble = store.bubbles.first(where: { $0.id == draggedId }) {
-                floatingManager.showFloatingBubble(for: bubble)
-            }
-        }
-
-        XCTAssertFalse(store.bubbles.first!.docked)
-        XCTAssertTrue(floatingManager.hasPanel(for: ws.id))
-    }
-
-    func test_completing_drag_inside_sidebar_keeps_bubble_docked() {
-        let store = BubbleStore()
-        let ws = makeBubble(name: "Kept", docked: true)
-        store.config.bubbles = [ws]
-
-        let sidebarController = SidebarPanelController(store: store, headless: true)
-        sidebarController.show()
-
-        var machine = BubbleDragStateMachine()
-        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 10, height: 0))
-        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 25, height: 0))
-        let draggedId = machine.dragEnded()
-
-        XCTAssertNotNil(draggedId)
-        let dropPoint = CGPoint(x: 36, y: 500)
-        var dockZone = DockZone()
-        if let sidebarFrame = sidebarController.panelFrame {
-            dockZone.sidebarFrame = sidebarFrame
-            if dockZone.contains(dropPoint) {
-            }
-        }
-
-        XCTAssertTrue(store.bubbles.first!.docked)
-    }
-}
-
-@MainActor
-final class DragRedockBehaviorTests: XCTestCase {
-
-    func test_floating_bubble_dropped_over_sidebar_redocks() {
-        let store = BubbleStore()
-        let ws = makeBubble(name: "Floating", docked: false, floatingPosition: CodablePoint(x: 200, y: 300))
-        store.config.bubbles = [ws]
-
-        let sidebarController = SidebarPanelController(store: store, headless: true)
-        sidebarController.show()
-        let floatingManager = FloatingBubbleManager(store: store, headless: true)
-        floatingManager.showFloatingBubble(for: ws)
-
-        var dockZone = DockZone()
-        if let sidebarFrame = sidebarController.panelFrame {
-            dockZone.sidebarFrame = sidebarFrame
-            let dropCenter = CGPoint(x: sidebarFrame.midX, y: sidebarFrame.midY)
-
-            if dockZone.contains(dropCenter) {
-                let sortOrder = dockZone.insertionIndex(
-                    at: dropCenter,
-                    bubbleCount: store.bubbles.filter(\.docked).count
-                )
-                store.redockBubble(ws.id, atSortOrder: sortOrder)
-                floatingManager.hideFloatingBubble(for: ws.id)
-            }
-        }
-
-        XCTAssertTrue(store.bubbles.first!.docked)
-        XCTAssertNil(store.bubbles.first!.floatingPosition)
-        XCTAssertFalse(floatingManager.hasPanel(for: ws.id))
     }
 }
 
@@ -1422,60 +1228,6 @@ final class SettingsViewBehaviorTests: XCTestCase {
 }
 
 @MainActor
-final class AppDragWiringTests: XCTestCase {
-
-    func test_handle_drag_undock_creates_floating_panel() {
-        let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeBubble(name: "Drag", docked: true)
-        delegate.store.config.bubbles = [ws]
-        delegate.sidebarController.show()
-
-        delegate.handleDragUndock(bubbleId: ws.id, screenPoint: CGPoint(x: 300, y: 400))
-
-        XCTAssertFalse(delegate.store.bubbles.first!.docked)
-        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
-    }
-
-    func test_handle_redock_check_redocks_when_over_sidebar() {
-        let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeBubble(name: "Float", docked: false)
-        delegate.store.config.bubbles = [ws]
-        delegate.sidebarController.show()
-        delegate.floatingManager.showFloatingBubble(for: ws)
-
-        guard let sidebarFrame = delegate.sidebarController.panelFrame else {
-            XCTFail("Sidebar should have a frame")
-            return
-        }
-
-        let overSidebar = NSRect(
-            x: sidebarFrame.midX - 36,
-            y: sidebarFrame.midY - 40,
-            width: 72,
-            height: 80
-        )
-        delegate.handleRedockCheck(bubbleId: ws.id, panelFrame: overSidebar)
-
-        XCTAssertTrue(delegate.store.bubbles.first!.docked)
-        XCTAssertFalse(delegate.floatingManager.hasPanel(for: ws.id))
-    }
-
-    func test_handle_redock_check_ignores_when_not_over_sidebar() {
-        let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeBubble(name: "Float", docked: false)
-        delegate.store.config.bubbles = [ws]
-        delegate.sidebarController.show()
-        delegate.floatingManager.showFloatingBubble(for: ws)
-
-        let farAway = NSRect(x: 500, y: 500, width: 72, height: 80)
-        delegate.handleRedockCheck(bubbleId: ws.id, panelFrame: farAway)
-
-        XCTAssertFalse(delegate.store.bubbles.first!.docked)
-        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
-    }
-}
-
-@MainActor
 final class WindowLivenessBehaviorTests: XCTestCase {
 
     func test_refresh_clears_stale_window_ids() {
@@ -1486,7 +1238,9 @@ final class WindowLivenessBehaviorTests: XCTestCase {
         let activeWindowIds: Set<String> = ["pty-other"]
         store.refreshWindowLiveness(activeWindowIds: activeWindowIds)
 
-        XCTAssertTrue(store.bubbles.isEmpty, "Bubble with dead window should be removed")
+        XCTAssertEqual(store.bubbles.count, 1, "Bubble should persist when window dies")
+        XCTAssertNil(store.bubbles.first?.itermWindowId, "Window ID should be cleared")
+        XCTAssertNil(store.bubbles.first?.asWindowId, "AppleScript window ID should be cleared")
     }
 
     func test_refresh_keeps_active_window_ids() {
@@ -1517,7 +1271,8 @@ final class WindowPollingBehaviorTests: XCTestCase {
 
         await store.pollWindowLiveness()
 
-        XCTAssertTrue(store.bubbles.isEmpty, "Bubble with dead window should be removed")
+        XCTAssertEqual(store.bubbles.count, 1, "Bubble should persist when window dies")
+        XCTAssertNil(store.bubbles.first?.itermWindowId, "Window ID should be cleared after poll")
     }
 
     func test_poll_windows_keeps_live_windows() async {
@@ -1550,66 +1305,6 @@ final class WindowPollingBehaviorTests: XCTestCase {
         await store.pollWindowLiveness()
 
         XCTAssertEqual(store.bubbles.first!.itermWindowId, "pty-1")
-    }
-}
-
-@MainActor
-final class FloatingPanelContentBehaviorTests: XCTestCase {
-
-    func test_floating_panel_has_bubble_content() {
-        let store = BubbleStore()
-        let ws = makeBubble(name: "Content", color: "#FF0000", icon: "terminal", docked: false)
-        store.config.bubbles = [ws]
-        let manager = FloatingBubbleManager(store: store, headless: true)
-
-        manager.showFloatingBubble(for: ws)
-
-        XCTAssertTrue(manager.hasPanel(for: ws.id))
-        XCTAssertNotNil(manager.panelContentView(for: ws.id))
-    }
-}
-
-@MainActor
-final class FloatingPanelRedockWiringTests: XCTestCase {
-
-    func test_floating_panel_mouseup_calls_redock_check() {
-        let store = BubbleStore()
-        let ws = makeBubble(name: "A", docked: false)
-        store.config.bubbles = [ws]
-        let manager = FloatingBubbleManager(store: store, headless: true)
-
-        var receivedBubbleId: String?
-        var receivedFrame: NSRect?
-        manager.onRedockCheck = { id, frame in
-            receivedBubbleId = id
-            receivedFrame = frame
-        }
-
-        manager.showFloatingBubble(for: ws)
-
-        manager.simulateMouseUp(for: ws.id)
-
-        XCTAssertEqual(receivedBubbleId, ws.id)
-        XCTAssertNotNil(receivedFrame)
-    }
-}
-
-@MainActor
-final class SidebarDragCallbackTests: XCTestCase {
-
-    func test_app_delegate_wires_drag_undock_on_launch() async {
-        let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeBubble(name: "Drag", docked: true)
-        delegate.store.config.bubbles = [ws]
-        delegate.store.config.sidebar.visible = true
-
-        let fake = FakeBridge()
-        await delegate.launch(bridge: fake)
-
-        delegate.handleDragUndock(bubbleId: ws.id, screenPoint: CGPoint(x: 300, y: 300))
-
-        XCTAssertFalse(delegate.store.bubbles.first!.docked)
-        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
     }
 }
 
@@ -1650,14 +1345,6 @@ final class SettingsSaveBehaviorTests: XCTestCase {
 @MainActor
 final class LaunchWiringCompletenessTests: XCTestCase {
 
-    func test_launch_wires_redock_callback_on_floating_manager() async {
-        let delegate = AppDelegate(); do { delegate.headless = true }
-        let fake = FakeBridge()
-        await delegate.launch(bridge: fake)
-
-        XCTAssertNotNil(delegate.floatingManager.onRedockCheck)
-    }
-
     func test_launch_starts_polling_task() async {
         let delegate = AppDelegate(); do { delegate.headless = true }
         let fake = FakeBridge()
@@ -1675,105 +1362,6 @@ final class LaunchWiringCompletenessTests: XCTestCase {
         await delegate.shutdownForTest()
 
         XCTAssertFalse(delegate.isPollingActive)
-    }
-}
-
-@MainActor
-final class SidebarDragFlowTests: XCTestCase {
-
-    func test_full_undock_flow_via_app_delegate() async {
-        let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeBubble(name: "Undock", docked: true)
-        delegate.store.config.bubbles = [ws]
-        delegate.store.config.sidebar.visible = true
-
-        let fake = FakeBridge()
-        await fake.setCallResult("list_windows", value: [[String: Any]]())
-        await delegate.launch(bridge: fake)
-
-        var machine = BubbleDragStateMachine()
-        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 10, height: 0))
-        machine.dragChanged(bubbleId: ws.id, translation: CGSize(width: 25, height: 0))
-        guard let draggedId = machine.dragEnded() else {
-            XCTFail("Expected active drag")
-            return
-        }
-
-        delegate.handleDragUndock(bubbleId: draggedId, screenPoint: CGPoint(x: 300, y: 400))
-
-        XCTAssertFalse(delegate.store.bubbles.first!.docked)
-        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
-
-        delegate.recallAll()
-        XCTAssertTrue(delegate.store.bubbles.first!.docked)
-        XCTAssertFalse(delegate.floatingManager.hasPanel(for: ws.id))
-    }
-
-    func test_full_redock_flow_via_floating_panel() async {
-        let delegate = AppDelegate(); do { delegate.headless = true }
-        let ws = makeBubble(name: "Redock", docked: false, floatingPosition: CodablePoint(x: 200, y: 200))
-        delegate.store.config.bubbles = [ws]
-        delegate.store.config.sidebar.visible = true
-
-        let fake = FakeBridge()
-        await fake.setCallResult("list_windows", value: [[String: Any]]())
-        await delegate.launch(bridge: fake)
-
-        XCTAssertTrue(delegate.floatingManager.hasPanel(for: ws.id))
-
-        guard let sidebarFrame = delegate.sidebarController.panelFrame else {
-            XCTFail("Sidebar should have a frame")
-            return
-        }
-        let overSidebar = NSRect(
-            x: sidebarFrame.midX - 36,
-            y: sidebarFrame.midY - 40,
-            width: 72,
-            height: 80
-        )
-        delegate.handleRedockCheck(bubbleId: ws.id, panelFrame: overSidebar)
-
-        XCTAssertTrue(delegate.store.bubbles.first!.docked)
-        XCTAssertFalse(delegate.floatingManager.hasPanel(for: ws.id))
-    }
-}
-
-@MainActor
-final class SidebarDragCallbackWiringTests: XCTestCase {
-
-    func test_sidebar_controller_accepts_drag_callbacks() {
-        let store = BubbleStore()
-        let controller = SidebarPanelController(store: store, headless: true)
-
-        var receivedId: String?
-        var receivedTranslation: CGSize?
-        controller.onDragChanged = { id, translation in
-            receivedId = id
-            receivedTranslation = translation
-        }
-
-        XCTAssertNotNil(controller.onDragChanged)
-    }
-
-    func test_sidebar_controller_accepts_drag_ended_callback() {
-        let store = BubbleStore()
-        let controller = SidebarPanelController(store: store, headless: true)
-
-        var endedId: String?
-        controller.onDragEnded = { id in endedId = id }
-
-        XCTAssertNotNil(controller.onDragEnded)
-    }
-
-    func test_launch_wires_drag_callbacks_to_sidebar() async {
-        let delegate = AppDelegate(); do { delegate.headless = true }
-        delegate.store.config.sidebar.visible = true
-        let fake = FakeBridge()
-        await fake.setCallResult("list_windows", value: [[String: Any]]())
-        await delegate.launch(bridge: fake)
-
-        XCTAssertNotNil(delegate.sidebarController.onDragChanged)
-        XCTAssertNotNil(delegate.sidebarController.onDragEnded)
     }
 }
 
@@ -1804,23 +1392,6 @@ final class BridgeScriptBundlingTests: XCTestCase {
         let reqPath = projectDir.appendingPathComponent("StyxBridge/requirements.txt")
         XCTAssertTrue(FileManager.default.fileExists(atPath: reqPath.path),
                        "requirements.txt should exist at \(reqPath.path)")
-    }
-}
-
-@MainActor
-final class SavePositionsBehaviorTests: XCTestCase {
-
-    func test_save_positions_updates_floating_bubble_positions() {
-        let store = BubbleStore()
-        let ws = makeBubble(name: "Float", docked: false, floatingPosition: CodablePoint(x: 100, y: 100))
-        store.config.bubbles = [ws]
-        let manager = FloatingBubbleManager(store: store, headless: true)
-        manager.showFloatingBubble(for: ws)
-
-        manager.savePositions()
-
-        let saved = store.bubbles.first!.floatingPosition
-        XCTAssertNotNil(saved)
     }
 }
 
@@ -2353,8 +1924,8 @@ final class ProxyWindowManagerTests: XCTestCase {
         manager.refresh()
         XCTAssertEqual(manager.proxyCount, 1)
 
-        // Undock the bubble
-        store.undockBubble(ws.id, position: .zero)
+        // Mark the bubble as undocked directly
+        store.config.bubbles[0].docked = false
         manager.refresh()
         XCTAssertEqual(manager.proxyCount, 0)
     }
